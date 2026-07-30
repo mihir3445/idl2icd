@@ -32,6 +32,8 @@ class ValidationSection(BaseModel):
 
 class DiagramsSection(BaseModel):
     direction: str = "LR"
+    show_topic_qos: bool = False
+    show_topic_rate: bool = False
 
 
 class PluginsSection(BaseModel):

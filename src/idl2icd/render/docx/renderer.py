@@ -90,7 +90,14 @@ def _fix_zoom_setting(doc: Document) -> None:
     zoom.set(qn("w:percent"), "100")
 
 
-def render_docx(ir: IRModel, diagnostics: list[Diagnostic], out_path: Path, direction: str = "LR") -> None:
+def render_docx(
+    ir: IRModel,
+    diagnostics: list[Diagnostic],
+    out_path: Path,
+    direction: str = "LR",
+    show_topic_qos: bool = False,
+    show_topic_rate: bool = False,
+) -> None:
     doc = Document()
     _fix_zoom_setting(doc)
 
@@ -143,7 +150,12 @@ def render_docx(ir: IRModel, diagnostics: list[Diagnostic], out_path: Path, dire
         "is not yet wired in this build — see the website output for the "
         "interactive version). Mermaid source below:"
     ).italic = True
-    mermaid_src = generate_pubsub_graph(ir, direction=direction)
+    mermaid_src = generate_pubsub_graph(
+        ir,
+        direction=direction,
+        show_topic_qos=show_topic_qos,
+        show_topic_rate=show_topic_rate,
+    )
     mono = doc.add_paragraph()
     mono_run = mono.add_run(mermaid_src)
     mono_run.font.name = "Consolas"

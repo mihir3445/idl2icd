@@ -11,7 +11,14 @@ from idl2icd.model.ir import Diagnostic, IRModel
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 
 
-def render_site(ir: IRModel, diagnostics: list[Diagnostic], out_dir: Path, direction: str = "LR"):
+def render_site(
+    ir: IRModel,
+    diagnostics: list[Diagnostic],
+    out_dir: Path,
+    direction: str = "LR",
+    show_topic_qos: bool = False,
+    show_topic_rate: bool = False,
+):
     templates_dir = THEME_DIR / "templates"
     env = Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -23,7 +30,12 @@ def render_site(ir: IRModel, diagnostics: list[Diagnostic], out_dir: Path, direc
     shutil.copytree(static_src, static_dst)
 
     all_topics = sorted(ir.topics.values(), key=lambda t: t.fqn)
-    pubsub_graph = generate_pubsub_graph(ir, direction=direction)
+    pubsub_graph = generate_pubsub_graph(
+        ir,
+        direction=direction,
+        show_topic_qos=show_topic_qos,
+        show_topic_rate=show_topic_rate,
+    )
 
     index_tpl = env.get_template("index.html.j2")
     (out_dir / "index.html").write_text(index_tpl.render(

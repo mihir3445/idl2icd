@@ -10,7 +10,14 @@ from idl2icd.model.ir import Diagnostic, IRModel
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 
 
-def render_pdf(ir: IRModel, diagnostics: list[Diagnostic], out_path: Path, direction: str = "LR") -> None:
+def render_pdf(
+    ir: IRModel,
+    diagnostics: list[Diagnostic],
+    out_path: Path,
+    direction: str = "LR",
+    show_topic_qos: bool = False,
+    show_topic_rate: bool = False,
+) -> None:
     try:
         from weasyprint import HTML
     except ImportError as exc:
@@ -43,7 +50,12 @@ def render_pdf(ir: IRModel, diagnostics: list[Diagnostic], out_path: Path, direc
         project=ir.project,
         all_topics=all_topics,
         diagnostics=diagnostics,
-        pubsub_graph=generate_pubsub_graph(ir, direction=direction),
+        pubsub_graph=generate_pubsub_graph(
+            ir,
+            direction=direction,
+            show_topic_qos=show_topic_qos,
+            show_topic_rate=show_topic_rate,
+        ),
         print_css=print_css,
     )
 

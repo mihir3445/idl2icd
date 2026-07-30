@@ -23,3 +23,5 @@ validation:
 
 diagrams:
   direction: LR
+  show_topic_qos: false
+  show_topic_rate: false

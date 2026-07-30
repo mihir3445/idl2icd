@@ -98,14 +98,15 @@ def _resolve_qos(qos_meta: dict | None, qos_profiles: dict[str, dict]) -> Resolv
         base.update({k: v for k, v in overrides.items() if v is not None})
 
     kwargs = {}
-    if "reliability" in base:
-        kwargs["reliability"] = base["reliability"]
-    if "durability" in base:
-        kwargs["durability"] = base["durability"]
-    if base.get("history"):
-        kwargs["history"] = QoSHistory(**base["history"])
-    if base.get("deadline"):
-        kwargs["deadline"] = QoSDeadline(**base["deadline"])
-    if base.get("liveliness"):
-        kwargs["liveliness"] = QoSLiveliness(**base["liveliness"])
+    for key in ("reliability", "durability"):
+        if key in base:
+            kwargs[key] = base[key]
+
+    for key, cls in (
+        ("history", QoSHistory),
+        ("deadline", QoSDeadline),
+        ("liveliness", QoSLiveliness),
+    ):
+        if base.get(key):
+            kwargs[key] = cls(**base[key])
     return ResolvedQoS(**kwargs)

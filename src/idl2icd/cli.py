@@ -111,16 +111,23 @@ def _print_diagnostics(diagnostics):
     console.print(table)
 
 
+def _exit_if_validation_failed(worst: str | None, threshold: str, message: str):
+    if worst and SEVERITY_RANK[worst] >= SEVERITY_RANK[threshold]:
+        console.print(f"[red]{message}[/red]")
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def validate(config: str = typer.Option("idl2icd.yaml", "--config", "-c")):
     """Parse + merge + run validation only (fast, CI-friendly)."""
     cfg, _, diagnostics = _build_ir_and_diagnostics(config)
     _print_diagnostics(diagnostics)
     worst = worst_severity(diagnostics)
-    threshold = cfg.validation.fail_on
-    if worst and SEVERITY_RANK[worst] >= SEVERITY_RANK[threshold]:
-        console.print(f"[red]Validation failed: worst severity '{worst}' >= fail_on threshold '{threshold}'[/red]")
-        raise typer.Exit(code=1)
+    _exit_if_validation_failed(
+        worst,
+        cfg.validation.fail_on,
+        f"Validation failed: worst severity '{worst}' >= fail_on threshold '{cfg.validation.fail_on}'",
+    )
     console.print("[green]Validation passed.[/green]")
 
 
@@ -132,36 +139,59 @@ def build(
     """Full pipeline: parse -> validate -> render site, PDF, and/or docx."""
     cfg, ir, diagnostics = _build_ir_and_diagnostics(config)
     _print_diagnostics(diagnostics)
+    base_dir = Path(cfg._base_dir)
 
-    out_dir = Path(cfg._base_dir) / cfg.output.site_dir
+    out_dir = base_dir / cfg.output.site_dir
     if format in ("site", "all"):
-        render_site(ir, diagnostics, out_dir, direction=cfg.diagrams.direction)
+        render_site(
+            ir,
+            diagnostics,
+            out_dir,
+            direction=cfg.diagrams.direction,
+            show_topic_qos=cfg.diagrams.show_topic_qos,
+            show_topic_rate=cfg.diagrams.show_topic_rate,
+        )
         console.print(f"[green]Site written to {out_dir}[/green]")
 
     if format in ("pdf", "all"):
         from idl2icd.render.pdf.renderer import render_pdf
-        pdf_path = Path(cfg._base_dir) / cfg.output.pdf_path
+        pdf_path = base_dir / cfg.output.pdf_path
         try:
-            render_pdf(ir, diagnostics, pdf_path, direction=cfg.diagrams.direction)
+            render_pdf(
+                ir,
+                diagnostics,
+                pdf_path,
+                direction=cfg.diagrams.direction,
+                show_topic_qos=cfg.diagrams.show_topic_qos,
+                show_topic_rate=cfg.diagrams.show_topic_rate,
+            )
             console.print(f"[green]PDF written to {pdf_path}[/green]")
         except (ImportError, OSError) as exc:
             console.print(f"[yellow]{escape(_pdf_unavailable_message(exc))}[/yellow]")
 
     if format in ("docx", "all"):
         from idl2icd.render.docx.renderer import render_docx
-        docx_path = Path(cfg._base_dir) / cfg.output.docx_path
+        docx_path = base_dir / cfg.output.docx_path
         try:
-            render_docx(ir, diagnostics, docx_path, direction=cfg.diagrams.direction)
+            render_docx(
+                ir,
+                diagnostics,
+                docx_path,
+                direction=cfg.diagrams.direction,
+                show_topic_qos=cfg.diagrams.show_topic_qos,
+                show_topic_rate=cfg.diagrams.show_topic_rate,
+            )
             console.print(f"[green]Word document written to {docx_path}[/green]")
         except ImportError:
             msg = "Word export requires the optional 'docx' extra: pip install 'idl2icd[docx]'"
             console.print(f"[yellow]{escape(msg)}[/yellow]")
 
     worst = worst_severity(diagnostics)
-    threshold = cfg.validation.fail_on
-    if worst and SEVERITY_RANK[worst] >= SEVERITY_RANK[threshold]:
-        console.print(f"[red]Build produced output, but validation failed (worst='{worst}').[/red]")
-        raise typer.Exit(code=1)
+    _exit_if_validation_failed(
+        worst,
+        cfg.validation.fail_on,
+        f"Build produced output, but validation failed (worst='{worst}').",
+    )
 
 
 @app.command()
