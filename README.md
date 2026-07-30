@@ -2,10 +2,10 @@
 
 The IDL is the single source of truth. Everything else — the website, the PDF, the Word doc, the change log — is generated from it.
 
-Generate a living Interface Control Document (modern website (and, optionally, a PDF/Word document) for a DDS system straight from OMG IDL + a small metadata layer (publishers,
+Generate a living Interface Control Document (modern website and optionally, a PDF/Word document) for a DDS system straight from OMG IDL + a small metadata layer (publishers,
 subscribers, QoS, timing, units).
 
-See `ARCHITECTURE.md` for the full design. See `examples/robot-fleet` for a
+See [`Architecture`](ARCHITECTURE.md) for the full design. See `examples/robot-fleet` for a
 runnable example.
 
 ## Platform notes
