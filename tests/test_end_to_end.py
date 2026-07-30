@@ -1,10 +1,12 @@
 from pathlib import Path
 
+import pytest
+
+import idl2icd.validation.rules.builtin  # noqa: F401
 from idl2icd.config import load_config
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
 from idl2icd.validation.engine import run_rules
-import idl2icd.validation.rules.builtin  # noqa: F401
 
 EXAMPLE_DIR = Path(__file__).parent.parent / "examples" / "robot-fleet"
 
@@ -63,3 +65,20 @@ def test_dangling_topic_ref_is_reported(tmp_path):
     project = ProjectMeta(name="t", version="0.0.1")
     ir = build_ir([idl], [meta], project)
     assert any(d.rule == "dangling-topic-ref" for d in ir.diagnostics)
+
+
+def test_invalid_metadata_yaml_is_reported(tmp_path):
+    idl = tmp_path / "bad.idl"
+    idl.write_text("""
+    @topic
+    struct Unsafe {
+      @key unsigned long id;
+      float value;
+    };
+    """)
+    meta = tmp_path / "meta.yaml"
+    meta.write_text("topics: [oops")
+    project = ProjectMeta(name="t", version="0.0.1")
+
+    with pytest.raises(ValueError, match="Failed to parse metadata YAML"):
+        build_ir([idl], [meta], project)

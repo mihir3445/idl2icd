@@ -5,7 +5,7 @@ produce this; nothing downstream re-reads source files.
 """
 from __future__ import annotations
 
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -20,8 +20,8 @@ class TypeRef(BaseModel):
     string/sequence, or a named user type (FQN)."""
     kind: Literal["primitive", "string", "sequence", "named", "array"]
     name: str  # primitive name, "string", "sequence", or the FQN for named
-    bound: Optional[int] = None          # string/sequence bound, if any
-    element: Optional["TypeRef"] = None  # element type for sequence/array
+    bound: int | None = None          # string/sequence bound, if any
+    element: TypeRef | None = None  # element type for sequence/array
     array_dims: list[int] = Field(default_factory=list)
 
     def render(self) -> str:
@@ -44,10 +44,10 @@ TypeRef.model_rebuild()
 
 class FieldMeta(BaseModel):
     """Metadata that can be attached to a field from the metadata YAML."""
-    unit: Optional[str] = None
-    range: Optional[list[float]] = None
-    precision: Optional[float] = None
-    description: Optional[str] = None
+    unit: str | None = None
+    range: list[float] | None = None
+    precision: float | None = None
+    description: str | None = None
 
 
 class Field_(BaseModel):
@@ -55,18 +55,18 @@ class Field_(BaseModel):
     type_ref: TypeRef
     is_key: bool = False
     optional: bool = False
-    doc: Optional[str] = None
+    doc: str | None = None
     meta: FieldMeta = Field(default_factory=FieldMeta)
-    source_span: Optional[SourceSpan] = None
+    source_span: SourceSpan | None = None
 
 
 class StructType(BaseModel):
     fqn: str
     kind: Literal["struct"] = "struct"
     fields: list[Field_] = Field(default_factory=list)
-    doc: Optional[str] = None
+    doc: str | None = None
     is_topic: bool = False
-    source_span: Optional[SourceSpan] = None
+    source_span: SourceSpan | None = None
 
 
 class UnionCase(BaseModel):
@@ -79,61 +79,61 @@ class UnionType(BaseModel):
     kind: Literal["union"] = "union"
     discriminator: TypeRef
     cases: list[UnionCase] = Field(default_factory=list)
-    doc: Optional[str] = None
-    source_span: Optional[SourceSpan] = None
+    doc: str | None = None
+    source_span: SourceSpan | None = None
 
 
 class EnumType(BaseModel):
     fqn: str
     kind: Literal["enum"] = "enum"
     values: list[str] = Field(default_factory=list)
-    doc: Optional[str] = None
-    source_span: Optional[SourceSpan] = None
+    doc: str | None = None
+    source_span: SourceSpan | None = None
 
 
 AnyType = Union[StructType, UnionType, EnumType]
 
 
 class RateSpec(BaseModel):
-    nominal_hz: Optional[float] = None
-    max_hz: Optional[float] = None
+    nominal_hz: float | None = None
+    max_hz: float | None = None
 
 
 class QoSHistory(BaseModel):
     kind: Literal["KEEP_LAST", "KEEP_ALL"] = "KEEP_LAST"
-    depth: Optional[int] = 1
+    depth: int | None = 1
 
 
 class QoSDeadline(BaseModel):
-    period_ms: Optional[float] = None
+    period_ms: float | None = None
 
 
 class QoSLiveliness(BaseModel):
     kind: Literal["AUTOMATIC", "MANUAL_BY_PARTICIPANT", "MANUAL_BY_TOPIC"] = "AUTOMATIC"
-    lease_duration_ms: Optional[float] = None
+    lease_duration_ms: float | None = None
 
 
 class ResolvedQoS(BaseModel):
     reliability: Literal["BEST_EFFORT", "RELIABLE"] = "BEST_EFFORT"
     durability: Literal["VOLATILE", "TRANSIENT_LOCAL", "TRANSIENT", "PERSISTENT"] = "VOLATILE"
     history: QoSHistory = Field(default_factory=QoSHistory)
-    deadline: Optional[QoSDeadline] = None
-    liveliness: Optional[QoSLiveliness] = None
+    deadline: QoSDeadline | None = None
+    liveliness: QoSLiveliness | None = None
 
 
 class Endpoint(BaseModel):
     participant: str
-    instance_count: Optional[str] = None
-    source: Optional[str] = None
-    notes: Optional[str] = None
+    instance_count: str | None = None
+    source: str | None = None
+    notes: str | None = None
 
 
 class Topic(BaseModel):
     fqn: str
     data_type_fqn: str
-    description: Optional[str] = None
-    criticality: Optional[Literal["low", "medium", "high", "safety"]] = None
-    rate: Optional[RateSpec] = None
+    description: str | None = None
+    criticality: Literal["low", "medium", "high", "safety"] | None = None
+    rate: RateSpec | None = None
     qos: ResolvedQoS = Field(default_factory=ResolvedQoS)
     publishers: list[Endpoint] = Field(default_factory=list)
     subscribers: list[Endpoint] = Field(default_factory=list)
@@ -142,14 +142,14 @@ class Topic(BaseModel):
 class ProjectMeta(BaseModel):
     name: str
     version: str
-    organization: Optional[str] = None
+    organization: str | None = None
 
 
 class Diagnostic(BaseModel):
     rule: str
     severity: Literal["error", "warn", "info"]
     message: str
-    location: Optional[SourceSpan] = None
+    location: SourceSpan | None = None
 
 
 class IRModel(BaseModel):

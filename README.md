@@ -57,6 +57,13 @@ pip install -e ".[pdf,docx]"      # drop extras you don't need
 idl2icd doctor                    # check project is working fine
 ```
 
+For development, install the dev extras and run the test suite:
+
+```bash
+pip install -e ".[dev]"
+python3 -m pytest -q
+```
+
 Shall show you following to confirm things are working without error.
 
 ```text

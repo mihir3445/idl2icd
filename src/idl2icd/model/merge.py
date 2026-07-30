@@ -3,13 +3,23 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+from pydantic import ValidationError
 
-from idl2icd.parsing.idl_parser import parse_idl_file, ParsedFile
-from idl2icd.model.metadata_schema import MetadataFile
 from idl2icd.model.ir import (
-    IRModel, ProjectMeta, Topic, ResolvedQoS, QoSHistory, QoSDeadline,
-    QoSLiveliness, RateSpec, Endpoint, Diagnostic, StructType,
+    Diagnostic,
+    Endpoint,
+    IRModel,
+    ProjectMeta,
+    QoSDeadline,
+    QoSHistory,
+    QoSLiveliness,
+    RateSpec,
+    ResolvedQoS,
+    StructType,
+    Topic,
 )
+from idl2icd.model.metadata_schema import MetadataFile
+from idl2icd.parsing.idl_parser import ParsedFile, parse_idl_file
 
 
 def build_ir(idl_paths: list[Path], metadata_paths: list[Path], project: ProjectMeta) -> IRModel:
@@ -24,8 +34,17 @@ def build_ir(idl_paths: list[Path], metadata_paths: list[Path], project: Project
     qos_profiles: dict[str, dict] = {}
     topic_meta: dict[str, dict] = {}
     for mp in metadata_paths:
-        raw = yaml.safe_load(Path(mp).read_text()) or {}
-        mf = MetadataFile.model_validate(raw)
+        raw_text = Path(mp).read_text()
+        try:
+            raw = yaml.safe_load(raw_text) or {}
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Failed to parse metadata YAML '{mp}': {exc}") from exc
+
+        try:
+            mf = MetadataFile.model_validate(raw)
+        except ValidationError as exc:
+            raise ValueError(f"Invalid metadata file '{mp}': {exc}") from exc
+
         for name, prof in mf.qos_profiles.items():
             qos_profiles[name] = prof.model_dump(exclude_none=True)
         for fqn, t in mf.topics.items():

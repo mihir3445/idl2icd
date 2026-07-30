@@ -5,10 +5,12 @@ special-cased built-in one plus a plugin one.
 """
 from __future__ import annotations
 
-from idl2icd.plugins.spec import hookimpl
-from idl2icd.validation.rules import builtin as builtin_rules
-from idl2icd.validation.engine import _RULES, _DEFAULT_SEVERITY  # already-registered rules
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph, generate_type_diagram
+from idl2icd.plugins.spec import hookimpl
+from idl2icd.validation.engine import (  # already-registered rules
+    _DEFAULT_SEVERITY,
+    _RULES,
+)
 
 
 class CorePlugin:

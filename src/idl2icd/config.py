@@ -54,6 +54,9 @@ class ProjectConfig(BaseModel):
     def resolve_metadata_paths(self) -> list[Path]:
         return _glob_all(self._base_dir, self.sources.metadata)
 
+    def resolve_include_paths(self) -> list[Path]:
+        return _glob_all(self._base_dir, self.sources.include_paths)
+
 
 def _glob_all(base: Path, patterns: list[str]) -> list[Path]:
     out: list[Path] = []
@@ -66,5 +69,5 @@ def load_config(path: str | Path) -> ProjectConfig:
     p = Path(path)
     raw = yaml.safe_load(p.read_text())
     cfg = ProjectConfig.model_validate(raw)
-    cfg._base_dir = p.parent
+    cfg._base_dir = p.parent.resolve()
     return cfg

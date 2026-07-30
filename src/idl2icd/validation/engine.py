@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, Iterator
 
-from idl2icd.model.ir import IRModel, Diagnostic
+from idl2icd.model.ir import Diagnostic, IRModel
 
 _RULES: dict[str, Callable[[IRModel], Iterator[Diagnostic]]] = {}
 _DEFAULT_SEVERITY: dict[str, str] = {}

@@ -34,8 +34,6 @@ def extract_doc_comments(source: str) -> DocCommentIndex:
 
         # /** ... */ possibly spanning multiple lines
         if "/**" in line:
-            block_lines = []
-            start_line = i
             # naive: join lines until closing */
             joined = line
             j = i

@@ -3,13 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from lark import Lark, Tree, Token
+from lark import Lark, Token, Tree
 
-from idl2icd.parsing.doc_comments import extract_doc_comments
 from idl2icd.model.ir import (
-    TypeRef, Field_, FieldMeta, StructType, UnionType, UnionCase, EnumType,
+    EnumType,
+    Field_,
     SourceSpan,
+    StructType,
+    TypeRef,
+    UnionCase,
+    UnionType,
 )
+from idl2icd.parsing.doc_comments import extract_doc_comments
 
 _GRAMMAR_PATH = Path(__file__).parent / "idl_grammar.lark"
 _parser = Lark(_GRAMMAR_PATH.read_text(), parser="lalr", propagate_positions=True)
@@ -71,7 +76,6 @@ def _walk(tree: Tree, scope: list[str], filename: str, doc_index, out: ParsedFil
         if not isinstance(node, Tree):
             continue
         if node.data == "module_def":
-            annos = _find_annotations(node.children)
             ident = next(c for c in node.children if isinstance(c, Token) and c.type == "IDENT")
             inner_defs = [c for c in node.children if isinstance(c, Tree) and c.data == "definition"]
             _walk_definitions(inner_defs, [*scope, ident.value], filename, doc_index, out)
@@ -83,7 +87,6 @@ def _walk_definitions(defs: list[Tree], scope: list[str], filename: str, doc_ind
     for d in defs:
         inner = d.children[0]
         if inner.data == "module_def":
-            annos = _find_annotations(inner.children)
             ident = next(c for c in inner.children if isinstance(c, Token) and c.type == "IDENT")
             sub_defs = [c for c in inner.children if isinstance(c, Tree) and c.data == "definition"]
             _walk_definitions(sub_defs, [*scope, ident.value], filename, doc_index, out)
@@ -146,14 +149,12 @@ def _const_expr_to_str(node: Tree) -> str:
 
 
 def _handle_struct(node: Tree, scope, filename, doc_index, out: ParsedFile):
-    annos = _find_annotations(node.children)
     ident = next(c for c in node.children if isinstance(c, Token) and c.type == "IDENT")
     fqn = _fqn(scope, ident.value)
     members = [c for c in node.children if isinstance(c, Tree) and c.data == "member"]
 
     fields: list[Field_] = []
     for m in members:
-        m_annos = _find_annotations(m.children)
         rest = [c for c in m.children if isinstance(c, Tree) and c.data != "annotation"]
         type_spec = rest[0]
         declarators = rest[1:]

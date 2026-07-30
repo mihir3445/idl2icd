@@ -4,7 +4,6 @@ raw file diff, so renames/reordering/comment-only edits don't create noise.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -93,9 +92,19 @@ def diff_ir(old: IRModel, new: IRModel) -> ChangeReport:
             entity=fqn, kind="type-removed", change_class="breaking",
             detail="type removed",
         ))
+    for fqn in sorted(set(new_types) - set(old_types)):
+        report.changes.append(Change(
+            entity=fqn, kind="type-added", change_class="additive",
+            detail="type added",
+        ))
     for fqn in sorted(set(old_types) & set(new_types)):
         ot, nt = old_types[fqn], new_types[fqn]
-        if ot.kind == "struct" and nt.kind == "struct":
+        if ot.kind != nt.kind:
+            report.changes.append(Change(
+                entity=fqn, kind="type-kind-changed", change_class="breaking",
+                detail=f"type kind changed: {ot.kind} → {nt.kind}",
+            ))
+        elif ot.kind == "struct" and nt.kind == "struct":
             report.changes.extend(_diff_struct_fields(fqn, ot, nt))
 
     return report
@@ -105,6 +114,12 @@ def _diff_topic(fqn: str, old: Topic, new: Topic) -> list[Change]:
     changes: list[Change] = []
 
     _DURABILITY_RANK = {"VOLATILE": 0, "TRANSIENT_LOCAL": 1, "TRANSIENT": 2, "PERSISTENT": 3}
+    if old.data_type_fqn != new.data_type_fqn:
+        changes.append(Change(
+            entity=fqn, kind="topic-data-type-changed", change_class="breaking",
+            detail=f"topic data type changed: {old.data_type_fqn} → {new.data_type_fqn}",
+        ))
+
     if _DURABILITY_RANK[new.qos.durability] < _DURABILITY_RANK[old.qos.durability]:
         changes.append(Change(
             entity=fqn, kind="qos-durability-weakened", change_class="breaking",

@@ -3,18 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from pydantic import ValidationError
 from rich.console import Console
-from rich.table import Table
 from rich.markup import escape
+from rich.table import Table
 
+import idl2icd.validation.rules.builtin  # noqa: F401  (registers built-in rules)
 from idl2icd.config import load_config
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
-from idl2icd.validation.engine import run_rules, worst_severity, SEVERITY_RANK
-import idl2icd.validation.rules.builtin  # noqa: F401  (registers built-in rules)
-from idl2icd.render.site.renderer import render_site
 from idl2icd.plugins.loader import build_plugin_manager, list_available_plugins
-from idl2icd.snapshot import save_snapshot, load_snapshot, diff_ir
+from idl2icd.render.site.renderer import render_site
+from idl2icd.snapshot import diff_ir, load_snapshot, save_snapshot
+from idl2icd.validation.engine import SEVERITY_RANK, run_rules, worst_severity
 
 app = typer.Typer(help="idl2icd: generate an Interface Control Document from OMG IDL + metadata.")
 snapshot_app = typer.Typer(help="Manage frozen IR snapshots used for change reports.")
@@ -62,14 +63,30 @@ def _pdf_unavailable_message(exc: Exception) -> str:
 
 
 def _build_ir_and_diagnostics(config_path: str):
-    cfg = load_config(config_path)
+    try:
+        cfg = load_config(config_path)
+    except FileNotFoundError:
+        console.print(f"[red]Config file not found: {config_path}[/red]")
+        raise typer.Exit(code=1)
+    except ValidationError as exc:
+        console.print(f"[red]Configuration validation failed:\n{exc}[/red]")
+        raise typer.Exit(code=1)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
     project = ProjectMeta(**cfg.project.model_dump())
     idl_paths = cfg.resolve_idl_paths()
     metadata_paths = cfg.resolve_metadata_paths()
     if not idl_paths:
         console.print(f"[red]No IDL files matched sources.idl patterns: {cfg.sources.idl}[/red]")
         raise typer.Exit(code=1)
-    ir = build_ir(idl_paths, metadata_paths, project)
+
+    try:
+        ir = build_ir(idl_paths, metadata_paths, project)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
 
     pm = build_plugin_manager(enabled=cfg.plugins.enabled or None)
     for result in pm.hook.on_ir_built(ir=ir):

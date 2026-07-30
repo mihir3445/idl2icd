@@ -34,6 +34,7 @@
 - CLI: `validate`, `build --format site|pdf|docx|all`, `diff`,
   `snapshot save`, `plugins list`, `doctor` (reports PDF *and* docx
   availability, with platform-aware fix hints for macOS WeasyPrint issues).
+- Package metadata now includes a single, explicit author entry for `Mihir Patel`.
 - 8 passing pytest tests covering parse+merge, validation rules, the
   snapshot/diff engine, and the docx renderer's actual document content.
 - GitHub Actions: CI (matrix test + example build), a PR-time docs-drift

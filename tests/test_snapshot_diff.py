@@ -1,8 +1,7 @@
-from pathlib import Path
 
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
-from idl2icd.snapshot import save_snapshot, load_snapshot, diff_ir
+from idl2icd.snapshot import diff_ir, load_snapshot, save_snapshot
 
 
 def _build(tmp_path, idl_text, meta_text, version="1.0.0"):
@@ -108,3 +107,38 @@ def test_diff_detects_durability_weakening(tmp_path):
     new = _build(tmp_path, BASE_IDL, new_meta, version="1.0.1")
     report = diff_ir(old, new)
     assert any(c.kind == "qos-durability-weakened" for c in report.breaking())
+
+
+def test_diff_detects_type_added(tmp_path):
+    old = _build(tmp_path, BASE_IDL, BASE_META, version="1.0.0")
+
+    new_idl = """
+    @topic
+    struct Foo {
+      @key unsigned long id;
+      float value;
+    };
+
+    struct Bar {
+      float extra;
+    };
+    """
+    new_meta = BASE_META
+    new = _build(tmp_path, new_idl, new_meta, version="1.1.0")
+
+    report = diff_ir(old, new)
+    assert any(c.kind == "type-added" for c in report.additive())
+
+
+def test_diff_detects_type_kind_change(tmp_path):
+    old = _build(tmp_path, BASE_IDL, BASE_META, version="1.0.0")
+
+    new_idl = """
+    @topic
+    enum Foo { OFF, ON };
+    """
+    new_meta = BASE_META
+    new = _build(tmp_path, new_idl, new_meta, version="2.0.0")
+
+    report = diff_ir(old, new)
+    assert any(c.kind == "type-kind-changed" for c in report.breaking())

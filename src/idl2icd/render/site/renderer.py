@@ -5,8 +5,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from idl2icd.model.ir import IRModel, Diagnostic
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph, generate_type_diagram
+from idl2icd.model.ir import Diagnostic, IRModel
 
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 

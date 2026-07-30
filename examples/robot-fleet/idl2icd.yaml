@@ -1,7 +1,7 @@
 project:
   name: "Robot Fleet Interface Control Document"
   version: "0.1.0"
-  organization: "M Robotics"
+  organization: "Comp Robotics"
 
 sources:
   idl:

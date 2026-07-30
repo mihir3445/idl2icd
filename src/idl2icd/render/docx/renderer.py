@@ -13,13 +13,12 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.shared import Pt, Cm, RGBColor
-from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 
-from idl2icd.model.ir import IRModel, Diagnostic
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph
+from idl2icd.model.ir import Diagnostic, IRModel
 
 _CRIT_COLOR = {
     "safety": RGBColor(0xD1, 0x49, 0x5B),
@@ -153,7 +152,7 @@ def render_docx(ir: IRModel, diagnostics: list[Diagnostic], out_path: Path, dire
     # --- per-topic sections ---
     for topic in all_topics:
         doc.add_page_break()
-        h = doc.add_heading(topic.fqn, level=1)
+        doc.add_heading(topic.fqn, level=1)
         if topic.criticality:
             badge = doc.add_paragraph()
             run = badge.add_run(f"  {topic.criticality.upper()}  ")

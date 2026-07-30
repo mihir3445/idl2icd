@@ -5,6 +5,16 @@ description = "Generate a website + PDF Interface Control Document from OMG IDL 
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
+authors = [
+  { name = "Mihir Patel" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+]
+keywords = ["idl", "dds", "documentation", "icd", "weasyprint", "python-docx"]
 dependencies = [
     "lark>=1.1.9",
     "pydantic>=2.6",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from idl2icd.model.ir import IRModel, Diagnostic
+from idl2icd.model.ir import Diagnostic, IRModel
 from idl2icd.validation.engine import register_rule
 
 

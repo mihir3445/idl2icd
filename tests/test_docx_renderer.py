@@ -1,6 +1,10 @@
-from pathlib import Path
 
-from docx import Document
+import pytest
+
+try:
+    from docx import Document
+except ImportError:
+    pytest.skip("python-docx is not installed", allow_module_level=True)
 
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
