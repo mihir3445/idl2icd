@@ -114,7 +114,7 @@ def _print_diagnostics(diagnostics):
 @app.command()
 def validate(config: str = typer.Option("idl2icd.yaml", "--config", "-c")):
     """Parse + merge + run validation only (fast, CI-friendly)."""
-    cfg, ir, diagnostics = _build_ir_and_diagnostics(config)
+    cfg, _, diagnostics = _build_ir_and_diagnostics(config)
     _print_diagnostics(diagnostics)
     worst = worst_severity(diagnostics)
     threshold = cfg.validation.fail_on
@@ -171,7 +171,7 @@ def diff(
     output_format: str = typer.Option("text", "--output-format", help="text | markdown"),
 ):
     """Show a semantic change report between the current build and a saved snapshot."""
-    cfg, ir, _ = _build_ir_and_diagnostics(config)
+    _, ir, _ = _build_ir_and_diagnostics(config)
     old_ir = load_snapshot(against)
     report = diff_ir(old_ir, ir)
 
@@ -194,7 +194,7 @@ def snapshot_save(
     tag: str = typer.Option(None, "--tag", help="Filename tag; defaults to the project version"),
 ):
     """Freeze the current IR to a JSON snapshot for future `idl2icd diff` comparisons."""
-    cfg, ir, diagnostics = _build_ir_and_diagnostics(config)
+    cfg, ir, _ = _build_ir_and_diagnostics(config)
     tag = tag or ir.project.version
     snap_dir = Path(cfg._base_dir) / cfg.output.snapshot_dir
     path = snap_dir / f"{tag}.json"

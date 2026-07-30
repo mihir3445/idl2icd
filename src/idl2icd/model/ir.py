@@ -5,7 +5,7 @@ produce this; nothing downstream re-reads source files.
 """
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -91,7 +91,7 @@ class EnumType(BaseModel):
     source_span: SourceSpan | None = None
 
 
-AnyType = Union[StructType, UnionType, EnumType]
+AnyType = StructType | UnionType | EnumType
 
 
 class RateSpec(BaseModel):

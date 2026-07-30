@@ -102,10 +102,10 @@ def _resolve_qos(qos_meta: dict | None, qos_profiles: dict[str, dict]) -> Resolv
         kwargs["reliability"] = base["reliability"]
     if "durability" in base:
         kwargs["durability"] = base["durability"]
-    if "history" in base and base["history"]:
+    if base.get("history"):
         kwargs["history"] = QoSHistory(**base["history"])
-    if "deadline" in base and base["deadline"]:
+    if base.get("deadline"):
         kwargs["deadline"] = QoSDeadline(**base["deadline"])
-    if "liveliness" in base and base["liveliness"]:
+    if base.get("liveliness"):
         kwargs["liveliness"] = QoSLiveliness(**base["liveliness"])
     return ResolvedQoS(**kwargs)
