@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}{{ project.name }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ asset_prefix }}static/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: "neutral" });</script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ asset_prefix }}index.html">{{ project.name }}</a>
+  <span class="version">v{{ project.version }}</span>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <h3>Topics</h3>
+    <ul>
+      {% for t in all_topics %}
+      <li><a href="{{ asset_prefix }}topics/{{ t.fqn | replace('::','.') }}.html">{{ t.fqn.split('::')[-1] }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

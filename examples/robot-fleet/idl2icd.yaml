@@ -1,0 +1,25 @@
+project:
+  name: "Robot Fleet Interface Control Document"
+  version: "0.1.0"
+  organization: "M Robotics"
+
+sources:
+  idl:
+    - "idl/**/*.idl"
+  metadata:
+    - "metadata/*.yaml"
+
+output:
+  site_dir: "dist/site"
+  pdf_path: "dist/icd.pdf"
+
+validation:
+  rules:
+    missing-units: warn
+    missing-owner: warn
+    undocumented-topic: info
+    qos-compatibility: error
+  fail_on: error
+
+diagrams:
+  direction: LR

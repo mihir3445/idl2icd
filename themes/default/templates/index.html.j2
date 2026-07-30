@@ -1,0 +1,36 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ project.name }}</h1>
+<p class="subtitle">{{ project.organization }} &middot; version {{ project.version }}</p>
+
+<h2>Publish/Subscribe Overview</h2>
+<div class="mermaid">
+{{ pubsub_graph }}
+</div>
+
+<h2>Topics ({{ all_topics|length }})</h2>
+<table class="topic-index">
+  <thead><tr><th>Topic</th><th>Criticality</th><th>Reliability</th><th>Durability</th><th>Publishers</th><th>Subscribers</th></tr></thead>
+  <tbody>
+  {% for t in all_topics %}
+    <tr>
+      <td><a href="topics/{{ t.fqn | replace('::','.') }}.html">{{ t.fqn }}</a></td>
+      <td><span class="badge badge-{{ t.criticality or 'none' }}">{{ t.criticality or "—" }}</span></td>
+      <td>{{ t.qos.reliability }}</td>
+      <td>{{ t.qos.durability }}</td>
+      <td>{{ t.publishers|length }}</td>
+      <td>{{ t.subscribers|length }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if diagnostics %}
+<h2>Validation Results</h2>
+<ul class="diagnostics">
+  {% for d in diagnostics %}
+  <li class="diag diag-{{ d.severity }}"><strong>[{{ d.severity|upper }}] {{ d.rule }}</strong> — {{ d.message }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

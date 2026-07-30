@@ -1,0 +1,84 @@
+// Lark grammar for a practical subset of OMG IDL 4.2, scoped to what
+// DDS topic-type IDL actually uses in the wild: modules, structs, unions,
+// enums, typedefs, sequences/arrays, bounded strings, @annotations, consts.
+//
+// NOTE: this is a pragmatic subset for idl2icd v0.1, not a full IDL4
+// compiler front-end. See ROADMAP.md for the planned ANTLR4-based
+// full-grammar migration.
+
+start: definition*
+
+definition: module_def
+          | struct_def
+          | union_def
+          | enum_def
+          | typedef_def
+          | const_def
+
+module_def: annotation* "module" IDENT "{" definition* "}" ";"
+
+struct_def: annotation* "struct" IDENT "{" member* "}" ";"
+member: annotation* type_spec declarator ("," declarator)* ";"
+
+union_def: annotation* "union" IDENT "switch" "(" type_spec ")" "{" union_case+ "}" ";"
+union_case: ("case" const_expr ":")+ type_spec declarator ";"   -> case_labelled
+          | "default" ":" type_spec declarator ";"              -> case_default
+
+enum_def: annotation* "enum" IDENT "{" IDENT ("," IDENT)* "}" ";"
+
+typedef_def: annotation* "typedef" type_spec declarator ";"
+
+const_def: "const" type_spec IDENT "=" const_expr ";"
+
+declarator: IDENT array_dims?
+array_dims: ("[" const_expr "]")+
+
+type_spec: "sequence" "<" type_spec ("," const_expr)? ">"   -> seq_type
+         | "string" ("<" const_expr ">")?                   -> string_type
+         | "wstring" ("<" const_expr ">")?                   -> wstring_type
+         | primitive_type                                    -> prim_type
+         | scoped_name                                       -> named_type
+
+// Multi-token OMG IDL primitive type names (e.g. "unsigned long long").
+primitive_type: "unsigned" "long" "long"  -> uint64_t
+              | "unsigned" "long"         -> uint32_t
+              | "unsigned" "short"        -> uint16_t
+              | "long" "long"             -> int64_t
+              | "long" "double"           -> longdouble_t
+              | "long"                    -> int32_t
+              | "short"                   -> int16_t
+              | "float"                   -> float_t
+              | "double"                  -> double_t
+              | "boolean"                 -> bool_t
+              | "octet"                   -> octet_t
+              | "char"                    -> char_t
+              | "wchar"                   -> wchar_t
+              | "int8"                    -> int8_t
+              | "uint8"                   -> uint8_t
+              | "int16"                   -> int16_t
+              | "uint16"                  -> uint16_t
+              | "int32"                   -> int32_t
+              | "uint32"                  -> uint32_t
+              | "int64"                   -> int64_t
+              | "uint64"                  -> uint64_t
+
+scoped_name: "::"? IDENT ("::" IDENT)*
+
+const_expr: SIGNED_NUMBER   -> num_expr
+          | ESCAPED_STRING  -> str_expr
+          | scoped_name     -> ref_expr
+
+annotation: "@" IDENT ["(" annotation_params ")"]
+annotation_params: annotation_param ("," annotation_param)*
+annotation_param: (IDENT "=")? const_expr
+
+IDENT: /[A-Za-z_][A-Za-z0-9_]*/
+
+%import common.SIGNED_NUMBER
+%import common.ESCAPED_STRING
+%import common.WS
+%import common.CPP_COMMENT
+%import common.C_COMMENT
+%ignore WS
+%ignore CPP_COMMENT
+%ignore C_COMMENT

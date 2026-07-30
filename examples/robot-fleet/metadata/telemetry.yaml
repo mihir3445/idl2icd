@@ -1,0 +1,46 @@
+qos_profiles:
+  reliable_transient_local:
+    reliability: RELIABLE
+    durability: TRANSIENT_LOCAL
+    history: { kind: KEEP_LAST, depth: 10 }
+    deadline: { period_ms: 500 }
+
+topics:
+  Robot::Telemetry::BatteryStatus:
+    description: >
+      Periodic battery state broadcast by every mobile platform. Used by the
+      fleet dashboard and the low-power safety monitor.
+    criticality: high
+    rate:
+      nominal_hz: 5
+      max_hz: 10
+    qos:
+      profile: reliable_transient_local
+    publishers:
+      - participant: PlatformNode
+        instance_count: "1 per robot"
+        source: battery_monitor_service
+    subscribers:
+      - participant: FleetDashboard
+      - participant: SafetyMonitor
+        notes: "Triggers emergency stop below 8% SOC"
+    fields:
+      state_of_charge_pct:
+        unit: percent
+        range: [0, 100]
+        description: "Coulomb-counted SOC, calibrated at full-charge events."
+      voltage:
+        unit: V
+        precision: 0.01
+      timestamp:
+        unit: "ns since epoch (TAI)"
+
+  Robot::Telemetry::PowerAlert:
+    description: "Emitted once when a robot's charge drops below a safety threshold."
+    criticality: safety
+    qos:
+      profile: reliable_transient_local
+    publishers:
+      - participant: PlatformNode
+    subscribers:
+      - participant: SafetyMonitor

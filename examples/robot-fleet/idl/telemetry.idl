@@ -1,0 +1,24 @@
+module Robot {
+  module Telemetry {
+
+    /**
+     * Periodic battery state broadcast by every mobile platform.
+     */
+    @topic
+    struct BatteryStatus {
+      @key unsigned long robot_id;
+      float state_of_charge_pct;
+      float voltage;
+      unsigned long long timestamp;
+    };
+
+    /// Emitted once when a robot's charge drops below a safety threshold.
+    @topic
+    struct PowerAlert {
+      @key unsigned long robot_id;
+      string message;
+      unsigned long long timestamp;
+    };
+
+  };
+};

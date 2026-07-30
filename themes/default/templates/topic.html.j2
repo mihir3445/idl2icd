@@ -1,0 +1,43 @@
+{% extends "base.html.j2" %}
+{% block title %}{{ topic.fqn }} — {{ project.name }}{% endblock %}
+{% block content %}
+<h1>{{ topic.fqn }}</h1>
+{% if topic.criticality %}<span class="badge badge-{{ topic.criticality }}">{{ topic.criticality }}</span>{% endif %}
+<p>{{ topic.description or "No description provided." }}</p>
+
+<h2>QoS</h2>
+<table class="kv">
+  <tr><th>Reliability</th><td>{{ topic.qos.reliability }}</td></tr>
+  <tr><th>Durability</th><td>{{ topic.qos.durability }}</td></tr>
+  <tr><th>History</th><td>{{ topic.qos.history.kind }} ({{ topic.qos.history.depth }})</td></tr>
+  {% if topic.qos.deadline %}<tr><th>Deadline</th><td>{{ topic.qos.deadline.period_ms }} ms</td></tr>{% endif %}
+  {% if topic.rate %}<tr><th>Rate</th><td>nominal {{ topic.rate.nominal_hz }} Hz / max {{ topic.rate.max_hz }} Hz</td></tr>{% endif %}
+</table>
+
+<h2>Publishers</h2>
+<ul>{% for p in topic.publishers %}<li>{{ p.participant }} {% if p.instance_count %}({{ p.instance_count }}){% endif %}</li>{% else %}<li><em>none declared</em></li>{% endfor %}</ul>
+
+<h2>Subscribers</h2>
+<ul>{% for s in topic.subscribers %}<li>{{ s.participant }} {% if s.notes %}— {{ s.notes }}{% endif %}</li>{% else %}<li><em>none declared</em></li>{% endfor %}</ul>
+
+<h2>Data Type: {{ data_type.fqn }}</h2>
+<table class="fields">
+  <thead><tr><th>Field</th><th>Type</th><th>Key</th><th>Unit</th><th>Description</th></tr></thead>
+  <tbody>
+  {% for f in data_type.fields %}
+    <tr>
+      <td>{{ f.name }}</td>
+      <td><code>{{ f.type_ref_render }}</code></td>
+      <td>{{ "🔑" if f.is_key else "" }}</td>
+      <td>{{ f.meta.unit or "" }}</td>
+      <td>{{ f.meta.description or f.doc or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Type Diagram</h2>
+<div class="mermaid">
+{{ type_diagram }}
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+@page {
+  size: A4;
+  margin: 2cm 1.8cm;
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9px; color: #666; }
+  @top-left { content: string(doc-title); font-size: 9px; color: #666; }
+}
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #1b1f24; font-size: 11px; }
+h1 { string-set: doc-title content(); font-size: 22px; margin-bottom: 2px; }
+h2 { font-size: 15px; margin-top: 20px; border-bottom: 1px solid #e2e5e9; padding-bottom: 3px; }
+h3 { font-size: 12px; }
+.cover { text-align: center; margin-top: 30%; page-break-after: always; }
+.cover h1 { font-size: 30px; }
+.topic-section { page-break-before: always; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 10px; }
+th, td { border: 1px solid #d0d5da; padding: 4px 7px; text-align: left; }
+th { background: #f0f2f5; }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: 600; color: #fff; }
+.badge-safety, .badge-high { background: #d1495b; }
+.badge-medium { background: #e2a53a; }
+.badge-low { background: #3aa76d; }
+.badge-none { background: #9aa5b1; }
+.diagram-note { font-style: italic; color: #666; font-size: 9px; background: #f7f8f9; padding: 6px 8px; border-radius: 4px; }
+code { background: #f0f2f5; padding: 1px 3px; border-radius: 2px; }
+.diag { padding: 3px 6px; margin-bottom: 3px; border-radius: 3px; font-size: 9.5px; }
+.diag-error { background: #fde2e2; }
+.diag-warn { background: #fff3cd; }
+.diag-info { background: #e7f1ff; }
