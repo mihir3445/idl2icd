@@ -303,7 +303,9 @@ def _type_spec_to_ref(node: Tree) -> TypeRef:
 def _const_expr_to_int(node: Tree) -> int | None:
     if node.data == "num_expr":
         try:
-            return int(float(node.children[0].value))
+            # int() with base 0 auto-detects 0x prefix for hex literals
+            # and falls back to decimal for plain numbers.
+            return int(node.children[0].value, 0)
         except ValueError:
             return None
     return None

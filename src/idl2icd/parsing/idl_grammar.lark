@@ -65,7 +65,17 @@ primitive_type: "unsigned" "long" "long"  -> uint64_t
 
 scoped_name: "::"? IDENT ("::" IDENT)*
 
-const_expr: SIGNED_NUMBER   -> num_expr
+%import common.ESCAPED_STRING
+%import common.WS
+%import common.CPP_COMMENT
+%import common.C_COMMENT
+
+// Custom number terminal that matches both decimal and hex literals.
+// The hex branch must come first so 0x00 is matched as a single token
+// rather than as SIGNED_NUMBER('0') + IDENT('x00').
+NUMBER: /0x[0-9a-fA-F]+/ | /[+-]?\d+(\.\d*)?([eE][+-]?\d+)?/
+
+const_expr: NUMBER          -> num_expr
           | ESCAPED_STRING  -> str_expr
           | scoped_name     -> ref_expr
 
@@ -74,12 +84,6 @@ annotation_params: annotation_param ("," annotation_param)*
 annotation_param: (IDENT "=")? const_expr
 
 IDENT: /[A-Za-z_][A-Za-z0-9_]*/
-
-%import common.SIGNED_NUMBER
-%import common.ESCAPED_STRING
-%import common.WS
-%import common.CPP_COMMENT
-%import common.C_COMMENT
 %ignore WS
 %ignore CPP_COMMENT
 %ignore C_COMMENT
