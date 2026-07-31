@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from lark import Lark, Token, Tree
+from lark.exceptions import UnexpectedCharacters, UnexpectedToken
 
 from idl2icd.model.ir import (
     EnumType,
@@ -66,10 +67,36 @@ def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> 
         include_dirs=include_dirs,
     )
     doc_index = extract_doc_comments(text)
-    tree = _parser.parse(text)
+    try:
+        tree = _parser.parse(text)
+    except (UnexpectedCharacters, UnexpectedToken) as exc:
+        line = getattr(exc, "line", None)
+        column = getattr(exc, "column", None)
+        msg = (
+            f"Failed to parse IDL '{source_path}' at line {line}, column {column}. "
+            f"Unexpected token: {exc}."
+        )
+        context = _format_source_context(text, line)
+        if context:
+            msg += f" Context:\n{context}"
+        raise ValueError(msg) from exc
     out = ParsedFile()
     _walk(tree, scope=[], filename=str(path), doc_index=doc_index, out=out)
     return out
+
+
+def _format_source_context(text: str, line_no: int | None, radius: int = 1) -> str | None:
+    if line_no is None:
+        return None
+    lines = text.splitlines()
+    start = max(1, line_no - radius)
+    end = min(len(lines), line_no + radius)
+    if start > end:
+        return None
+    selected = []
+    for idx in range(start, end + 1):
+        selected.append(f"{idx}: {lines[idx - 1]}")
+    return "\n".join(selected)
 
 
 def _rewrite_typedef_enum(text: str) -> str:

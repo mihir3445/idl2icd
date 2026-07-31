@@ -190,6 +190,24 @@ def test_union_switch_on_named_enum_is_accepted(tmp_path):
     assert [case.labels for case in union.cases] == [["UTM"], ["MRGS"]]
 
 
+def test_parse_error_reports_source_location(tmp_path):
+    idl = tmp_path / "bad.idl"
+    idl.write_text("""
+    struct Broken {
+      long x
+    };
+    """)
+
+    with pytest.raises(ValueError, match="bad.idl") as exc_info:
+        build_ir([idl], [], ProjectMeta(name="t", version="0.0.1"))
+
+    message = str(exc_info.value)
+    assert "line" in message
+    assert "column" in message
+    assert "long x" in message
+    assert "Context:" in message
+
+
 def test_invalid_metadata_yaml_is_reported(tmp_path):
     idl = tmp_path / "bad.idl"
     idl.write_text("""
