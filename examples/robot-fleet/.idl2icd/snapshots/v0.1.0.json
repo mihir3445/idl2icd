@@ -1,0 +1,280 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "name": "Robot Fleet Interface Control Document",
+    "version": "0.1.0",
+    "organization": "Comp Robotics"
+  },
+  "types": {
+    "Robot::Telemetry::BatteryStatus": {
+      "fqn": "Robot::Telemetry::BatteryStatus",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "robot_id",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "uint32",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": true,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "uint32",
+            "range": null,
+            "precision": null,
+            "description": "Unique identifier of the robot that emitted the alert."
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 9
+          }
+        },
+        {
+          "name": "state_of_charge_pct",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "float",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": false,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "percent",
+            "range": [
+              0.0,
+              100.0
+            ],
+            "precision": null,
+            "description": "Coulomb-counted SOC, calibrated at full-charge events."
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 10
+          }
+        },
+        {
+          "name": "voltage",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "float",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": false,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "V",
+            "range": null,
+            "precision": 0.01,
+            "description": null
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 11
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "uint64",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": false,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "ns since epoch (TAI)",
+            "range": null,
+            "precision": null,
+            "description": null
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 12
+          }
+        }
+      ],
+      "doc": "Periodic battery state broadcast by every mobile platform.",
+      "is_topic": true,
+      "source_span": {
+        "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+        "line": 7
+      }
+    },
+    "Robot::Telemetry::PowerAlert": {
+      "fqn": "Robot::Telemetry::PowerAlert",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "robot_id",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "uint32",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": true,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "uint32",
+            "range": null,
+            "precision": null,
+            "description": "Unique identifier of the robot that emitted the alert."
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 18
+          }
+        },
+        {
+          "name": "message",
+          "type_ref": {
+            "kind": "string",
+            "name": "string",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": false,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": null,
+            "range": null,
+            "precision": null,
+            "description": null
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 19
+          }
+        },
+        {
+          "name": "timestamp",
+          "type_ref": {
+            "kind": "primitive",
+            "name": "uint64",
+            "bound": null,
+            "element": null,
+            "array_dims": []
+          },
+          "is_key": false,
+          "optional": false,
+          "doc": null,
+          "meta": {
+            "unit": "ns since epoch (TAI)",
+            "range": null,
+            "precision": null,
+            "description": "Time at which the alert was generated by the robot."
+          },
+          "source_span": {
+            "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+            "line": 20
+          }
+        }
+      ],
+      "doc": "Emitted once when a robot's charge drops below a safety threshold.",
+      "is_topic": true,
+      "source_span": {
+        "file": "/home/runner/work/idl2icd/idl2icd/examples/robot-fleet/idl/telemetry.idl",
+        "line": 16
+      }
+    }
+  },
+  "topics": {
+    "Robot::Telemetry::BatteryStatus": {
+      "fqn": "Robot::Telemetry::BatteryStatus",
+      "data_type_fqn": "Robot::Telemetry::BatteryStatus",
+      "description": "Periodic battery state broadcast by every mobile platform. Used by the fleet dashboard and the low-power safety monitor.\n",
+      "criticality": "high",
+      "rate": {
+        "nominal_hz": 5.0,
+        "max_hz": 10.0
+      },
+      "qos": {
+        "reliability": "RELIABLE",
+        "durability": "TRANSIENT_LOCAL",
+        "history": {
+          "kind": "KEEP_LAST",
+          "depth": 10
+        },
+        "deadline": {
+          "period_ms": 500.0
+        },
+        "liveliness": null
+      },
+      "publishers": [
+        {
+          "participant": "PlatformNode",
+          "instance_count": "1 per robot",
+          "source": "battery_monitor_service",
+          "notes": null
+        }
+      ],
+      "subscribers": [
+        {
+          "participant": "FleetDashboard",
+          "instance_count": null,
+          "source": null,
+          "notes": null
+        },
+        {
+          "participant": "SafetyMonitor",
+          "instance_count": null,
+          "source": null,
+          "notes": "Triggers emergency stop below 8% SOC"
+        }
+      ]
+    },
+    "Robot::Telemetry::PowerAlert": {
+      "fqn": "Robot::Telemetry::PowerAlert",
+      "data_type_fqn": "Robot::Telemetry::PowerAlert",
+      "description": "Emitted once when a robot's charge drops below a safety threshold.",
+      "criticality": "safety",
+      "rate": null,
+      "qos": {
+        "reliability": "RELIABLE",
+        "durability": "TRANSIENT_LOCAL",
+        "history": {
+          "kind": "KEEP_LAST",
+          "depth": 10
+        },
+        "deadline": {
+          "period_ms": 500.0
+        },
+        "liveliness": null
+      },
+      "publishers": [
+        {
+          "participant": "PlatformNode",
+          "instance_count": null,
+          "source": null,
+          "notes": null
+        }
+      ],
+      "subscribers": [
+        {
+          "participant": "SafetyMonitor",
+          "instance_count": null,
+          "source": null,
+          "notes": null
+        }
+      ]
+    }
+  },
+  "diagnostics": []
+}
