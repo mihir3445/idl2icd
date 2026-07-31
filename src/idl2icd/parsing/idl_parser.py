@@ -198,6 +198,10 @@ def _preprocess_source_text(
                 active_stack.pop()
             continue
 
+        # pragma directives (e.g. #pragma once) are silently ignored.
+        if directive == "pragma":
+            continue
+
         include_match = _INCLUDE_RE.match(line)
         if directive == "include" and include_match:
             include_name = include_match.group(1) or include_match.group(2)
