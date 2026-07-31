@@ -17,7 +17,7 @@ definition: module_def
 
 module_def: annotation* "module" IDENT "{" definition* "}" ";"
 
-struct_def: annotation* "struct" IDENT "{" member* "}" ";"
+struct_def: annotation* "struct" IDENT [":" scoped_name] "{" member* "}" [";"]
 member: annotation* type_spec declarator ("," declarator)* ";"
 
 union_def: annotation* "union" IDENT "switch" "(" type_spec ")" "{" union_case+ "}" ";"

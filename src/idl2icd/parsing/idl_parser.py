@@ -22,6 +22,10 @@ _parser = Lark(_GRAMMAR_PATH.read_text(), parser="lalr", propagate_positions=Tru
 
 _DIRECTIVE_RE = re.compile(r"^\s*#\s*(\w+)(?:\s+(.*))?\s*$")
 _INCLUDE_RE = re.compile(r'^\s*#\s*include\s*(?:"([^"]+)"|<([^>]+)>)\s*$')
+_TYPEDEF_ENUM_RE = re.compile(
+    r"\btypedef\s+enum(?:\s+([A-Za-z_][A-Za-z0-9_]*))?\s*\{(.*?)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;",
+    re.DOTALL,
+)
 
 PRIMITIVES = {
     "boolean", "octet", "char", "wchar", "short", "unsigned",
@@ -53,6 +57,7 @@ def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> 
     # Preprocess a pragmatic C-style subset before handing the IDL to the
     # grammar. This lets common guard wrappers and includes work without
     # requiring callers to manually scrub the file first.
+    text = _rewrite_typedef_enum(text)
     text = _preprocess_source_text(
         text,
         source_path.parent,
@@ -65,6 +70,17 @@ def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> 
     out = ParsedFile()
     _walk(tree, scope=[], filename=str(path), doc_index=doc_index, out=out)
     return out
+
+
+def _rewrite_typedef_enum(text: str) -> str:
+    def _replace(match: re.Match[str]) -> str:
+        enum_tag = match.group(1)
+        alias = match.group(3)
+        body = match.group(2).strip()
+        enum_name = enum_tag or alias
+        return f"enum {enum_name} {{ {body} }};"
+
+    return _TYPEDEF_ENUM_RE.sub(_replace, text)
 
 
 def _visible(active_stack: list[dict[str, bool]]) -> bool:
@@ -162,7 +178,7 @@ def _preprocess_source_text(
                 include_path = _resolve_include_file(include_name, base_dir, include_dirs)
                 if include_path is not None and include_path.resolve() not in seen:
                     seen.add(include_path.resolve())
-                    included_text = include_path.read_text()
+                    included_text = _rewrite_typedef_enum(include_path.read_text())
                     out.append(_preprocess_source_text(
                         included_text,
                         include_path.parent,

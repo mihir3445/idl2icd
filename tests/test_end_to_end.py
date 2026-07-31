@@ -112,6 +112,25 @@ def test_nested_include_paths_are_resolved_from_base_dir(tmp_path):
     assert "M::Foo" in ir.types
 
 
+def test_struct_inheritance_is_accepted(tmp_path):
+    idl = tmp_path / "inheritance.idl"
+    idl.write_text("""
+    struct Base {
+      long x;
+    };
+
+    struct Child : Base {
+      long y;
+    }
+    """)
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([idl], [], project)
+
+    assert "Base" in ir.types
+    assert "Child" in ir.types
+
+
 def test_enum_member_initializers_are_accepted(tmp_path):
     idl = tmp_path / "enum-init.idl"
     idl.write_text("""
@@ -126,6 +145,49 @@ def test_enum_member_initializers_are_accepted(tmp_path):
 
     enum = ir.types["Foo"]
     assert enum.values == ["UNKNOWN", "ACTIVE"]
+
+
+def test_typedef_enum_with_initializers_is_accepted(tmp_path):
+    idl = tmp_path / "typedef-enum.idl"
+    idl.write_text("""
+    typedef enum {
+      UNKNOWN = 0,
+      ACTIVE = 1,
+    } UtmCoordinate3d;
+    """)
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([idl], [], project)
+
+    assert "UtmCoordinate3d" in ir.types
+    assert ir.types["UtmCoordinate3d"].values == ["UNKNOWN", "ACTIVE"]
+
+
+def test_union_switch_on_named_enum_is_accepted(tmp_path):
+    idl = tmp_path / "union-switch.idl"
+    idl.write_text("""
+    enum CoordType {
+      UTM,
+      MRGS,
+    };
+
+    union Cood switch(CoordType)
+    {
+      case UTM:
+        UtmCoordinate3d utm_coordinate;
+
+      case MRGS:
+        MGRSCoordinate3d mgrs_coordinate;
+    };
+    """)
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([idl], [], project)
+
+    assert "CoordType" in ir.types
+    assert "Cood" in ir.types
+    union = ir.types["Cood"]
+    assert [case.labels for case in union.cases] == [["UTM"], ["MRGS"]]
 
 
 def test_invalid_metadata_yaml_is_reported(tmp_path):
