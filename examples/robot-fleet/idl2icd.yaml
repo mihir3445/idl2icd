@@ -8,6 +8,8 @@ sources:
     - "idl/**/*.idl"
   metadata:
     - "metadata/*.yaml"
+  include_paths:
+    - "idl"
 
 output:
   site_dir: "dist/site"

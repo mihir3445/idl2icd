@@ -14,10 +14,17 @@ EXAMPLE_DIR = Path(__file__).parent.parent / "examples" / "robot-fleet"
 def test_parses_example_idl_and_merges_metadata():
     cfg = load_config(EXAMPLE_DIR / "idl2icd.yaml")
     project = ProjectMeta(**cfg.project.model_dump())
-    ir = build_ir(cfg.resolve_idl_paths(), cfg.resolve_metadata_paths(), project)
+    ir = build_ir(
+        cfg.resolve_idl_paths(),
+        cfg.resolve_metadata_paths(),
+        project,
+        include_dirs=cfg.resolve_include_paths(),
+    )
 
     assert "Robot::Telemetry::BatteryStatus" in ir.types
     assert "Robot::Telemetry::BatteryStatus" in ir.topics
+    assert "Robot::Telemetry::SharedId" in ir.types
+    assert "Robot::Telemetry::ChannelState" in ir.types
 
     battery = ir.topics["Robot::Telemetry::BatteryStatus"]
     assert battery.criticality == "high"
@@ -103,6 +110,22 @@ def test_nested_include_paths_are_resolved_from_base_dir(tmp_path):
 
     assert "Shared::Common" in ir.types
     assert "M::Foo" in ir.types
+
+
+def test_enum_member_initializers_are_accepted(tmp_path):
+    idl = tmp_path / "enum-init.idl"
+    idl.write_text("""
+    enum Foo {
+      UNKNOWN = 0,
+      ACTIVE = 1,
+    };
+    """)
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([idl], [], project)
+
+    enum = ir.types["Foo"]
+    assert enum.values == ["UNKNOWN", "ACTIVE"]
 
 
 def test_invalid_metadata_yaml_is_reported(tmp_path):

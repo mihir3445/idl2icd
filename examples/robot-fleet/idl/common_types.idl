@@ -1,0 +1,7 @@
+module Robot {
+  module Telemetry {
+    struct SharedId {
+      unsigned long value;
+    };
+  };
+};

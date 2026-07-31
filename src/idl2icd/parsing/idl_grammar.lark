@@ -24,7 +24,8 @@ union_def: annotation* "union" IDENT "switch" "(" type_spec ")" "{" union_case+ 
 union_case: ("case" const_expr ":")+ type_spec declarator ";"   -> case_labelled
           | "default" ":" type_spec declarator ";"              -> case_default
 
-enum_def: annotation* "enum" IDENT "{" IDENT ("," IDENT)* "}" ";"
+enum_def: annotation* "enum" IDENT "{" enum_member ("," enum_member)* [","] "}" ";"
+enum_member: IDENT ["=" const_expr]
 
 typedef_def: annotation* "typedef" type_spec declarator ";"
 

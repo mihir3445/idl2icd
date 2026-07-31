@@ -1,5 +1,15 @@
+#ifndef ROBOT_TELEMETRY_GUARD
+#define ROBOT_TELEMETRY_GUARD
+
+#include "common_types.idl"
+
 module Robot {
   module Telemetry {
+
+    enum ChannelState {
+      UNKNOWN = 0,
+      ACTIVE = 1,
+    };
 
     /**
      * Periodic battery state broadcast by every mobile platform.
@@ -10,6 +20,7 @@ module Robot {
       float state_of_charge_pct;
       float voltage;
       unsigned long long timestamp;
+      Robot::Telemetry::SharedId source_id;
     };
 
     /// Emitted once when a robot's charge drops below a safety threshold.
@@ -22,3 +33,5 @@ module Robot {
 
   };
 };
+
+#endif // ROBOT_TELEMETRY_GUARD

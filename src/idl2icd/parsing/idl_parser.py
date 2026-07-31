@@ -360,7 +360,11 @@ def _handle_union(node: Tree, scope, filename, doc_index, out: ParsedFile):
 def _handle_enum(node: Tree, scope, filename, doc_index, out: ParsedFile):
     ident = next(c for c in node.children if isinstance(c, Token) and c.type == "IDENT")
     fqn = _fqn(scope, ident.value)
-    values = [c.value for c in node.children if isinstance(c, Token) and c.type == "IDENT"][1:]
+    members = [c for c in node.children if isinstance(c, Tree) and c.data == "enum_member"]
+    values = [
+        next(t for t in m.children if isinstance(t, Token) and t.type == "IDENT").value
+        for m in members
+    ]
     enum = EnumType(
         fqn=fqn,
         values=values,
