@@ -31,12 +31,14 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
       - name: Commit frozen snapshot
+        continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add examples/robot-fleet/.idl2icd/snapshots
-          git commit -m "chore: snapshot ${{ github.ref_name }}" || echo "nothing to commit"
-          git push
+          git diff --staged --quiet && echo "nothing to commit" && exit 0
+          git commit -m "chore: snapshot ${{ github.ref_name }}"
+          git push origin HEAD:main
       - uses: softprops/action-gh-release@v2
         with:
           files: |
