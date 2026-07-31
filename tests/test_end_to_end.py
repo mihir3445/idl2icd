@@ -86,6 +86,25 @@ def test_preprocessor_guards_are_ignored_for_idl_parsing(tmp_path):
     assert "M::Foo" in ir.types
 
 
+def test_nested_include_paths_are_resolved_from_base_dir(tmp_path):
+    base = tmp_path / "base"
+    include_root = base / "idl"
+    nested_dir = include_root / "nested"
+    nested_dir.mkdir(parents=True)
+
+    shared = include_root / "common.idl"
+    shared.write_text("module Shared { struct Common { long value; }; };\n")
+
+    top = nested_dir / "top.idl"
+    top.write_text("#include \"../common.idl\"\nmodule M { struct Foo { Shared::Common value; }; };\n")
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([top], [], project, include_dirs=[include_root])
+
+    assert "Shared::Common" in ir.types
+    assert "M::Foo" in ir.types
+
+
 def test_invalid_metadata_yaml_is_reported(tmp_path):
     idl = tmp_path / "bad.idl"
     idl.write_text("""

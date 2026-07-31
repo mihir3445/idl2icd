@@ -22,12 +22,17 @@ from idl2icd.model.metadata_schema import MetadataFile
 from idl2icd.parsing.idl_parser import ParsedFile, parse_idl_file
 
 
-def build_ir(idl_paths: list[Path], metadata_paths: list[Path], project: ProjectMeta) -> IRModel:
+def build_ir(
+    idl_paths: list[Path],
+    metadata_paths: list[Path],
+    project: ProjectMeta,
+    include_dirs: list[Path] | None = None,
+) -> IRModel:
     diagnostics: list[Diagnostic] = []
 
     merged = ParsedFile()
     for p in idl_paths:
-        parsed = parse_idl_file(p)
+        parsed = parse_idl_file(p, include_dirs=include_dirs)
         merged.types.update(parsed.types)
         merged.topic_hints.update(parsed.topic_hints)
 

@@ -78,12 +78,13 @@ def _build_ir_and_diagnostics(config_path: str):
     project = ProjectMeta(**cfg.project.model_dump())
     idl_paths = cfg.resolve_idl_paths()
     metadata_paths = cfg.resolve_metadata_paths()
+    include_dirs = cfg.resolve_include_paths()
     if not idl_paths:
         console.print(f"[red]No IDL files matched sources.idl patterns: {cfg.sources.idl}[/red]")
         raise typer.Exit(code=1)
 
     try:
-        ir = build_ir(idl_paths, metadata_paths, project)
+        ir = build_ir(idl_paths, metadata_paths, project, include_dirs=include_dirs)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)

@@ -46,13 +46,20 @@ class ParsedFile:
     topic_hints: set[str] = field(default_factory=set)       # FQNs annotated @topic
 
 
-def parse_idl_file(path: str | Path) -> ParsedFile:
+def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> ParsedFile:
     source_path = Path(path)
     text = source_path.read_text()
+    include_dirs = [Path(d).resolve() for d in (include_dirs or [])]
     # Preprocess a pragmatic C-style subset before handing the IDL to the
     # grammar. This lets common guard wrappers and includes work without
     # requiring callers to manually scrub the file first.
-    text = _preprocess_source_text(text, source_path.parent, defined_macros=set(), seen={source_path.resolve()})
+    text = _preprocess_source_text(
+        text,
+        source_path.parent,
+        defined_macros=set(),
+        seen={source_path.resolve()},
+        include_dirs=include_dirs,
+    )
     doc_index = extract_doc_comments(text)
     tree = _parser.parse(text)
     out = ParsedFile()
@@ -64,10 +71,34 @@ def _visible(active_stack: list[dict[str, bool]]) -> bool:
     return all(ctx["branch_visible"] for ctx in active_stack)
 
 
-def _preprocess_source_text(text: str, base_dir: Path, *, defined_macros: set[str], seen: set[Path]) -> str:
+def _resolve_include_file(include_name: str, current_dir: Path, include_dirs: list[Path]) -> Path | None:
+    include_path = Path(include_name)
+    if include_path.is_absolute():
+        candidates = [include_path]
+    else:
+        candidates = [
+            (current_dir / include_path).resolve(),
+            *[(search_dir / include_path).resolve() for search_dir in include_dirs],
+        ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _preprocess_source_text(
+    text: str,
+    base_dir: Path,
+    *,
+    defined_macros: set[str],
+    seen: set[Path],
+    include_dirs: list[Path] | None = None,
+) -> str:
     lines = text.splitlines(keepends=True)
     active_stack: list[dict[str, bool]] = []
     out: list[str] = []
+    include_dirs = list(include_dirs or [])
 
     for line in lines:
         directive_match = _DIRECTIVE_RE.match(line)
@@ -128,15 +159,16 @@ def _preprocess_source_text(text: str, base_dir: Path, *, defined_macros: set[st
         if directive == "include" and include_match:
             include_name = include_match.group(1) or include_match.group(2)
             if _visible(active_stack):
-                include_path = (base_dir / include_name).resolve()
-                if include_path not in seen:
-                    seen.add(include_path)
+                include_path = _resolve_include_file(include_name, base_dir, include_dirs)
+                if include_path is not None and include_path.resolve() not in seen:
+                    seen.add(include_path.resolve())
                     included_text = include_path.read_text()
                     out.append(_preprocess_source_text(
                         included_text,
                         include_path.parent,
                         defined_macros=defined_macros,
                         seen=seen,
+                        include_dirs=include_dirs,
                     ))
             continue
 
