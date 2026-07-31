@@ -1,0 +1,36 @@
+name: Docs Drift & Change Report
+
+on:
+  pull_request:
+
+jobs:
+  change-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+
+      # Build IR from the base branch first and save it as the "old" snapshot,
+      # without re-installing over the current checkout's entry point.
+      - name: Snapshot base branch
+        run: |
+          git worktree add /tmp/base origin/${{ github.base_ref }}
+          PYTHONPATH=/tmp/base/src python -m idl2icd.cli snapshot save \
+            --config /tmp/base/examples/robot-fleet/idl2icd.yaml --tag base
+
+      - name: Diff against base branch
+        run: |
+          idl2icd diff \
+            --config examples/robot-fleet/idl2icd.yaml \
+            --against /tmp/base/examples/robot-fleet/.idl2icd/snapshots/base.json \
+            --output-format markdown > diff.md
+          cat diff.md
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: diff.md

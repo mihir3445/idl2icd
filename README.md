@@ -55,10 +55,10 @@ sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf2.0-0
 ## Quickstart
 
 ```bash
-
 python3 -m venv .venv             # create the virtual environment
 source .venv/bin/activate         # activate the environment
 pip install -e ".[pdf,docx]"      # drop extras you don't need
+```
 
 ```bash
 idl2icd doctor                    # check project is working fine
