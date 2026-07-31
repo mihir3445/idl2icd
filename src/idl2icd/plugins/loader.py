@@ -28,7 +28,7 @@ def build_plugin_manager(enabled: list[str] | None = None) -> pluggy.PluginManag
         try:
             plugin_cls = ep.load()
             pm.register(plugin_cls(), name=ep.name)
-        except Exception as exc:  # pragma: no cover - defensive  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 - a broken plugin must not crash the whole CLI; report and continue
             import sys
             print(f"[idl2icd] Warning: failed to load plugin '{ep.name}': {exc}", file=sys.stderr)
 

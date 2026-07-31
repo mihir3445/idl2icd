@@ -1,12 +1,19 @@
 # idl2icd
 
-The IDL is the single source of truth. Everything else — the website, the PDF, the Word doc, the change log — is generated from it.
+[![CI](https://github.com/mihir3445/idl2icd/actions/workflows/ci.yml/badge.svg)](https://github.com/mihir3445/idl2icd/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
-Generate a living Interface Control Document (modern website and optionally, a PDF/Word document) for a DDS system straight from OMG IDL + a small metadata layer (publishers,
+**The IDL is the single source of truth. Everything else — the website, the
+PDF, the Word doc, the change log — is generated from it.**
+
+Generate a modern website, PDF, and Word document Interface Control Document
+for a DDS system straight from OMG IDL + a small metadata layer (publishers,
 subscribers, QoS, timing, units).
 
-See [`Architecture`](ARCHITECTURE.md) for the full design. See `examples/robot-fleet` for a
-runnable example.
+See [`Architecture`](ARCHITECTURE.md) for the full design, `ROADMAP.md` for what's implemented
+vs. still designed-only, and `CONTRIBUTING.md` to get set up for development.
+See `examples/robot-fleet` for a runnable example.
 
 ## Platform notes
 
