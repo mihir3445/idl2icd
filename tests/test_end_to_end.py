@@ -67,6 +67,25 @@ def test_dangling_topic_ref_is_reported(tmp_path):
     assert any(d.rule == "dangling-topic-ref" for d in ir.diagnostics)
 
 
+def test_preprocessor_guards_are_ignored_for_idl_parsing(tmp_path):
+    idl = tmp_path / "guarded.idl"
+    idl.write_text("""
+    #ifndef XXX
+    #define XXX
+    module M {
+      struct Foo {
+        long x;
+      };
+    };
+    #endif // XXX
+    """)
+
+    project = ProjectMeta(name="t", version="0.0.1")
+    ir = build_ir([idl], [], project)
+
+    assert "M::Foo" in ir.types
+
+
 def test_invalid_metadata_yaml_is_reported(tmp_path):
     idl = tmp_path / "bad.idl"
     idl.write_text("""

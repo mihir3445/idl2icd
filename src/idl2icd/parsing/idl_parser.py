@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,6 +19,9 @@ from idl2icd.parsing.doc_comments import extract_doc_comments
 
 _GRAMMAR_PATH = Path(__file__).parent / "idl_grammar.lark"
 _parser = Lark(_GRAMMAR_PATH.read_text(), parser="lalr", propagate_positions=True)
+
+_DIRECTIVE_RE = re.compile(r"^\s*#\s*(\w+)(?:\s+(.*))?\s*$")
+_INCLUDE_RE = re.compile(r'^\s*#\s*include\s*(?:"([^"]+)"|<([^>]+)>)\s*$')
 
 PRIMITIVES = {
     "boolean", "octet", "char", "wchar", "short", "unsigned",
@@ -43,12 +47,105 @@ class ParsedFile:
 
 
 def parse_idl_file(path: str | Path) -> ParsedFile:
-    text = Path(path).read_text()
+    source_path = Path(path)
+    text = source_path.read_text()
+    # Preprocess a pragmatic C-style subset before handing the IDL to the
+    # grammar. This lets common guard wrappers and includes work without
+    # requiring callers to manually scrub the file first.
+    text = _preprocess_source_text(text, source_path.parent, defined_macros=set(), seen={source_path.resolve()})
     doc_index = extract_doc_comments(text)
     tree = _parser.parse(text)
     out = ParsedFile()
     _walk(tree, scope=[], filename=str(path), doc_index=doc_index, out=out)
     return out
+
+
+def _visible(active_stack: list[dict[str, bool]]) -> bool:
+    return all(ctx["branch_visible"] for ctx in active_stack)
+
+
+def _preprocess_source_text(text: str, base_dir: Path, *, defined_macros: set[str], seen: set[Path]) -> str:
+    lines = text.splitlines(keepends=True)
+    active_stack: list[dict[str, bool]] = []
+    out: list[str] = []
+
+    for line in lines:
+        directive_match = _DIRECTIVE_RE.match(line)
+        if not directive_match:
+            if _visible(active_stack):
+                out.append(line)
+            continue
+
+        directive = directive_match.group(1).lower()
+        remainder = (directive_match.group(2) or "").strip()
+
+        if directive == "define":
+            name = remainder.split()[0] if remainder else ""
+            if name:
+                defined_macros.add(name)
+            continue
+
+        if directive == "undef":
+            name = remainder.split()[0] if remainder else ""
+            if name:
+                defined_macros.discard(name)
+            continue
+
+        if directive == "ifdef":
+            name = remainder.split()[0] if remainder else ""
+            parent_visible = _visible(active_stack)
+            condition_true = name in defined_macros
+            active_stack.append({
+                "parent_visible": parent_visible,
+                "condition_true": condition_true,
+                "branch_visible": parent_visible and condition_true,
+            })
+            continue
+
+        if directive == "ifndef":
+            name = remainder.split()[0] if remainder else ""
+            parent_visible = _visible(active_stack)
+            condition_true = name not in defined_macros
+            active_stack.append({
+                "parent_visible": parent_visible,
+                "condition_true": condition_true,
+                "branch_visible": parent_visible and condition_true,
+            })
+            continue
+
+        if directive == "else":
+            if active_stack:
+                ctx = active_stack[-1]
+                ctx["branch_visible"] = ctx["parent_visible"] and not ctx["condition_true"]
+            continue
+
+        if directive == "endif":
+            if active_stack:
+                active_stack.pop()
+            continue
+
+        include_match = _INCLUDE_RE.match(line)
+        if directive == "include" and include_match:
+            include_name = include_match.group(1) or include_match.group(2)
+            if _visible(active_stack):
+                include_path = (base_dir / include_name).resolve()
+                if include_path not in seen:
+                    seen.add(include_path)
+                    included_text = include_path.read_text()
+                    out.append(_preprocess_source_text(
+                        included_text,
+                        include_path.parent,
+                        defined_macros=defined_macros,
+                        seen=seen,
+                    ))
+            continue
+
+        # Unknown directives are treated as a no-op. This keeps the parser
+        # tolerant of common guard metadata while preserving real IDL syntax.
+        if _visible(active_stack):
+            out.append(line)
+
+    return "".join(out)
 
 
 def _fqn(scope: list[str], name: str) -> str:
