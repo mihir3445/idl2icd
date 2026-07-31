@@ -46,8 +46,9 @@ def _struct_to_topic_meta(struct: StructType) -> dict:
     else:
         entry["description"] = "TODO: Add description for " + struct.fqn
 
-    # Placeholder sections (commented out in the generated YAML via a marker)
-    entry["criticality"] = "TODO (low | medium | high | safety)"
+    # Placeholder sections. criticality is omitted by default (it's optional
+    # in the schema and has a Literal constraint); the user can add it when
+    # they know the actual value.
     entry["qos"] = {"profile": "TODO: reference a qos_profile or define overrides"}
     entry["publishers"] = [
         {"participant": "TODO: PublisherName", "instance_count": "TBD", "source": "TBD"},
@@ -63,16 +64,33 @@ def _struct_to_topic_meta(struct: StructType) -> dict:
     return entry
 
 
-def _generate_yaml_for_idl(idl_path: Path, include_dirs: list[Path] | None = None) -> str | None:
-    """Parse a single IDL file and return a YAML string with skeleton metadata,
-    or None if the file has no @topic-annotated structs."""
+def _generate_yaml_for_idl(
+    idl_path: Path,
+    include_dirs: list[Path] | None = None,
+    all_structs: bool = False,
+) -> str | None:
+    """Parse a single IDL file and return a YAML string with skeleton metadata.
+
+    If *all_structs* is True, every struct in the file gets a metadata entry
+    (even without @topic). Otherwise, only @topic-annotated structs are included.
+    Returns None if no structs qualify.
+    """
     parsed = parse_idl_file(idl_path, include_dirs=include_dirs)
-    if not parsed.topic_hints:
+
+    # Determine which FQNs to generate entries for.
+    if all_structs:
+        candidates = sorted(
+            fqn for fqn, t in parsed.types.items() if isinstance(t, StructType)
+        )
+    else:
+        candidates = sorted(parsed.topic_hints)
+
+    if not candidates:
         return None
 
-    # Collect all @topic structs from this file
+    # Collect struct metadata entries
     topic_entries: dict[str, dict] = {}
-    for fqn in sorted(parsed.topic_hints):
+    for fqn in candidates:
         struct = parsed.types.get(fqn)
         if struct is not None and isinstance(struct, StructType):
             topic_entries[fqn] = _struct_to_topic_meta(struct)
@@ -80,16 +98,16 @@ def _generate_yaml_for_idl(idl_path: Path, include_dirs: list[Path] | None = Non
     if not topic_entries:
         return None
 
-    # Build the full document
-    doc: dict = {
-        "# yaml-language-server: $schema": "../schemas/metadata.schema.json",
-        "qos_profiles": {
-            "TODO_profile_name": {
-                "reliability": "RELIABLE",
-                "durability": "TRANSIENT_LOCAL",
-                "history": {"kind": "KEEP_LAST", "depth": 1},
-            },
+    qos_profiles: dict = {
+        "TODO_profile_name": {
+            "reliability": "RELIABLE",
+            "durability": "TRANSIENT_LOCAL",
+            "history": {"kind": "KEEP_LAST", "depth": 1},
         },
+    }
+
+    doc: dict = {
+        "qos_profiles": qos_profiles,
         "topics": topic_entries,
     }
     return yaml.dump(doc, default_flow_style=False, sort_keys=False, allow_unicode=True)
@@ -99,11 +117,12 @@ def generate_metadata_for_idl(
     idl_path: Path,
     output_dir: Path,
     include_dirs: list[Path] | None = None,
+    all_structs: bool = False,
 ) -> Path | None:
     """Parse an IDL file and write a skeleton metadata YAML file next to it
-    (in the output directory). Returns the output path, or None if no topics
-    were found."""
-    yaml_str = _generate_yaml_for_idl(idl_path, include_dirs=include_dirs)
+    (in the output directory). Returns the output path, or None if no structs
+    qualify for metadata generation."""
+    yaml_str = _generate_yaml_for_idl(idl_path, include_dirs=include_dirs, all_structs=all_structs)
     if yaml_str is None:
         return None
 

@@ -5,14 +5,14 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Live Demo](https://img.shields.io/badge/live%20demo-view%20site-brightgreen)](https://mihir3445.github.io/idl2icd/)
 
-**[→ View the live example ICD site](https://mihir3445.github.io/idl2icd/)** — generated entirely from `examples/robot-fleet`, rebuilt automatically on every tagged release.
-
 **The IDL is the single source of truth. Everything else — the website, the
 PDF, the Word doc, the change log — is generated from it.**
 
 Generate a modern website, PDF, and Word document Interface Control Document
 for a DDS system straight from OMG IDL + a small metadata layer (publishers,
 subscribers, QoS, timing, units).
+
+**[→ View the live example ICD site](https://mihir3445.github.io/idl2icd/)** — generated entirely from `examples/robot-fleet`, rebuilt automatically on every tagged release.
 
 See [`Architecture`](ARCHITECTURE.md) for the full design, `ROADMAP.md` for what's implemented
 vs. still designed-only, and `CONTRIBUTING.md` to get set up for development.
@@ -90,6 +90,10 @@ idl2icd validate
 idl2icd build --format all        # writes dist/site/, dist/icd.pdf, dist/icd.docx
 open dist/site/index.html         # Linux: xdg-open
 
+# Generate skeleton metadata YAML from your IDL (great for starting a new project):
+idl2icd metadata generate         # writes metadata/*.yaml from idl/*.idl
+idl2icd metadata generate --all-structs   # include non-@topic structs too
+
 # Freeze a snapshot, make a change, then see a semantic change report:
 idl2icd snapshot save --tag v0.1.0
 # ...edit idl/telemetry.idl or metadata/telemetry.yaml...
@@ -98,12 +102,15 @@ idl2icd diff --against .idl2icd/snapshots/v0.1.0.json --output-format markdown
 
 ## Status
 
-v0.3 — functional, tested: IDL parsing (Lark-based grammar covering modules,
-structs, unions, enums, sequences, bounded strings, `@key`/`@optional`/`@topic`
-annotations, doc-comments), metadata merge, a validation rule engine, Mermaid
-pub/sub + type diagrams, a static HTML site renderer, **PDF export**
-(WeasyPrint), **Word/.docx export** (python-docx), a **plugin system**
-(`pluggy` hookspecs), and a **snapshot + semantic change-report engine**
-(`idl2icd diff`). See `ROADMAP.md` for exactly what's implemented vs. still
-designed-only (full ANTLR-grade grammar, SARIF output, per-subscriber RxO
-QoS matrix, Mermaid→image embedding in PDF/docx, `init`/`serve` commands).
+v0.4 — functional, tested: IDL parsing (Lark-based grammar covering modules,
+structs, unions, enums, typedefs, sequences, bounded strings, arrays, consts,
+`@key`/`@optional`/`@topic` annotations, doc-comments, hex literals, pragma
+directives, `#include` with nested include-path resolution, and preprocessing
+guards), metadata merge, a validation rule engine, Mermaid pub/sub + type
+diagrams, a static HTML site renderer, **PDF export** (WeasyPrint),
+**Word/.docx export** (python-docx), a **plugin system** (`pluggy` hookspecs),
+a **snapshot + semantic change-report engine** (`idl2icd diff`), and a
+**metadata generator** (`idl2icd metadata generate`) that produces skeleton
+metadata YAML from IDL source. See `ROADMAP.md` for exactly what's implemented
+vs. still designed-only (full ANTLR-grade grammar, SARIF output, per-subscriber
+RxO QoS matrix, Mermaid→image embedding in PDF/docx, `init`/`serve` commands).

@@ -247,6 +247,7 @@ def plugins_list():
 def metadata_generate(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
     output_dir: str = typer.Option("metadata", "--output-dir", "-o", help="Directory to write generated YAML files to"),
+    all_structs: bool = typer.Option(False, "--all-structs", "-a", help="Generate entries for ALL structs, not just @topic ones"),
 ):
     """Generate skeleton metadata YAML files from IDL source files.
 
@@ -254,6 +255,10 @@ def metadata_generate(
     entries for every @topic-annotated struct, including doc-comments as
     descriptions, auto-detected fields, and placeholder sections for QoS
     profiles, publishers, subscribers, and field-level metadata.
+
+    Use --all-structs / -a to generate entries for every struct in the IDL
+    (even those without @topic), so you can decide which ones to promote to
+    topics in the metadata YAML.
     """
     try:
         cfg = load_config(config)
@@ -277,7 +282,9 @@ def metadata_generate(
 
     for idl_path in idl_paths:
         try:
-            result = generate_metadata_for_idl(idl_path, out_dir, include_dirs=include_dirs)
+            result = generate_metadata_for_idl(
+                idl_path, out_dir, include_dirs=include_dirs, all_structs=all_structs,
+            )
             if result is not None:
                 console.print(f"  [green]✔[/green] {result}")
                 generated += 1
@@ -289,7 +296,7 @@ def metadata_generate(
     if generated:
         console.print(f"\n[green]Generated {generated} metadata file(s) in {out_dir}[/green]")
     if skipped:
-        console.print(f"[yellow]Skipped {skipped} IDL file(s) with no @topic structs[/yellow]")
+        console.print(f"[yellow]Skipped {skipped} IDL file(s) with no {'@topic' if not all_structs else 'struct'} definitions[/yellow]")
     if not generated and not skipped:
         console.print("[yellow]No IDL files found to process.[/yellow]")
 
