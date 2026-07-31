@@ -10,6 +10,7 @@ from rich.table import Table
 
 import idl2icd.validation.rules.builtin  # noqa: F401  (registers built-in rules)
 from idl2icd.config import load_config
+from idl2icd.metadata_gen import generate_metadata_for_idl
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
 from idl2icd.plugins.loader import build_plugin_manager, list_available_plugins
@@ -20,8 +21,10 @@ from idl2icd.validation.engine import SEVERITY_RANK, run_rules, worst_severity
 app = typer.Typer(help="idl2icd: generate an Interface Control Document from OMG IDL + metadata.")
 snapshot_app = typer.Typer(help="Manage frozen IR snapshots used for change reports.")
 plugins_app = typer.Typer(help="Inspect available idl2icd plugins.")
+metadata_app = typer.Typer(help="Generate skeleton metadata YAML files from IDL.")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(plugins_app, name="plugins")
+app.add_typer(metadata_app, name="metadata")
 console = Console()
 
 
@@ -238,6 +241,57 @@ def plugins_list():
     """List discoverable idl2icd plugins (the 'core' plugin always loads)."""
     for name in list_available_plugins():
         console.print(f"- {name}")
+
+
+@metadata_app.command("generate")
+def metadata_generate(
+    config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
+    output_dir: str = typer.Option("metadata", "--output-dir", "-o", help="Directory to write generated YAML files to"),
+):
+    """Generate skeleton metadata YAML files from IDL source files.
+
+    Parses each IDL file and produces a corresponding .yaml file with skeleton
+    entries for every @topic-annotated struct, including doc-comments as
+    descriptions, auto-detected fields, and placeholder sections for QoS
+    profiles, publishers, subscribers, and field-level metadata.
+    """
+    try:
+        cfg = load_config(config)
+    except FileNotFoundError:
+        console.print(f"[red]Config file not found: {config}[/red]")
+        raise typer.Exit(code=1)
+    except (ValidationError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1)
+
+    idl_paths = cfg.resolve_idl_paths()
+    include_dirs = cfg.resolve_include_paths()
+    if not idl_paths:
+        console.print(f"[red]No IDL files matched sources.idl patterns: {cfg.sources.idl}[/red]")
+        raise typer.Exit(code=1)
+
+    base_dir = Path(cfg._base_dir)
+    out_dir = base_dir / output_dir
+    generated = 0
+    skipped = 0
+
+    for idl_path in idl_paths:
+        try:
+            result = generate_metadata_for_idl(idl_path, out_dir, include_dirs=include_dirs)
+            if result is not None:
+                console.print(f"  [green]✔[/green] {result}")
+                generated += 1
+            else:
+                skipped += 1
+        except ValueError as exc:
+            console.print(f"  [red]✖[/red] {idl_path}: {exc}")
+
+    if generated:
+        console.print(f"\n[green]Generated {generated} metadata file(s) in {out_dir}[/green]")
+    if skipped:
+        console.print(f"[yellow]Skipped {skipped} IDL file(s) with no @topic structs[/yellow]")
+    if not generated and not skipped:
+        console.print("[yellow]No IDL files found to process.[/yellow]")
 
 
 @app.command()
