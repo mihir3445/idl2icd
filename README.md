@@ -3,6 +3,9 @@
 [![CI](https://github.com/mihir3445/idl2icd/actions/workflows/ci.yml/badge.svg)](https://github.com/mihir3445/idl2icd/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![Live Demo](https://img.shields.io/badge/live%20demo-view%20site-brightgreen)](https://mihir3445.github.io/idl2icd/)
+
+**[→ View the live example ICD site](https://mihir3445.github.io/idl2icd/)** — generated entirely from `examples/robot-fleet`, rebuilt automatically on every tagged release.
 
 **The IDL is the single source of truth. Everything else — the website, the
 PDF, the Word doc, the change log — is generated from it.**
