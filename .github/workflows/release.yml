@@ -24,7 +24,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0
       - run: pip install -e ".[pdf,docx]"
       - run: idl2icd build --config examples/robot-fleet/idl2icd.yaml --format all
-      - run: idl2icd schema --out-dir schemas
       - run: idl2icd snapshot save --config examples/robot-fleet/idl2icd.yaml --tag ${{ github.ref_name }}
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -35,7 +34,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add examples/robot-fleet/.idl2icd/snapshots schemas
+          git add examples/robot-fleet/.idl2icd/snapshots
           git commit -m "chore: snapshot ${{ github.ref_name }}" || echo "nothing to commit"
           git push
       - uses: softprops/action-gh-release@v2
