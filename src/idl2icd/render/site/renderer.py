@@ -5,7 +5,10 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph, generate_type_diagram
+from idl2icd.diagrams.pubsub_graph import (
+    generate_pubsub_graph,
+    generate_type_diagram_for_struct,
+)
 from idl2icd.model.ir import Diagnostic, IRModel
 
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
@@ -49,16 +52,17 @@ def render_site(
     for topic in all_topics:
         data_type = ir.types.get(topic.data_type_fqn)
         fields_for_render = []
-        if data_type and data_type.kind == "struct":
+        is_struct = data_type and data_type.kind == "struct"
+        if is_struct:
             for f in data_type.fields:
                 fields_for_render.append({
                     "name": f.name, "is_key": f.is_key,
                     "type_ref_render": f.type_ref.render(),
                     "meta": f.meta, "doc": f.doc,
                 })
-        type_diagram = generate_type_diagram(IRModel(
-            project=ir.project, types={topic.data_type_fqn: data_type} if data_type else {},
-        ))
+            type_diagram = generate_type_diagram_for_struct(data_type)
+        else:
+            type_diagram = "classDiagram"
         html = topic_tpl.render(
             project=ir.project, topic=topic,
             data_type={"fqn": data_type.fqn, "fields": fields_for_render} if data_type else {"fqn": "?", "fields": []},

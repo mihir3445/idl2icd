@@ -71,15 +71,31 @@ def generate_pubsub_graph(
     return "\n".join(lines)
 
 
+def _struct_class_lines(struct) -> list[str]:
+    """Generate Mermaid classDiagram lines for a single struct (no header)."""
+    short = struct.fqn.split("::")[-1]
+    lines = [f"    class {short} {{"]
+    for f in struct.fields:
+        key_marker = "+" if f.is_key else " "
+        lines.append(f"        {key_marker}{f.type_ref.render()} {f.name}")
+    lines.append("    }")
+    return lines
+
+
+def generate_type_diagram_for_struct(struct) -> str:
+    """Generate a complete Mermaid classDiagram for a single struct type.
+
+    This is the lightweight helper callers should use when they only need a
+    diagram for one type — no IRModel construction or re-validation required.
+    """
+    return "\n".join(["classDiagram", *_struct_class_lines(struct)])
+
+
 def generate_type_diagram(ir: IRModel) -> str:
+    """Generate a Mermaid classDiagram for all struct types in the IR."""
     lines = ["classDiagram"]
     for t in ir.types.values():
         if t.kind != "struct":
             continue
-        short = t.fqn.split("::")[-1]
-        lines.append(f"    class {short} {{")
-        for f in t.fields:
-            key_marker = "+" if f.is_key else " "
-            lines.append(f"        {key_marker}{f.type_ref.render()} {f.name}")
-        lines.append("    }")
+        lines.extend(_struct_class_lines(t))
     return "\n".join(lines)

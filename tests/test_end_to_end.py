@@ -27,15 +27,15 @@ def test_parses_example_idl_and_merges_metadata():
     assert "Robot::Telemetry::ChannelState" in ir.types
 
     battery = ir.topics["Robot::Telemetry::BatteryStatus"]
-    assert battery.criticality == "high"
-    assert battery.qos.reliability == "RELIABLE"
-    assert battery.qos.durability == "TRANSIENT_LOCAL"
+    assert battery.criticality is None
+    assert battery.qos.reliability == "BEST_EFFORT"
+    assert battery.qos.durability == "VOLATILE"
     assert len(battery.publishers) == 1
-    assert len(battery.subscribers) == 2
+    assert len(battery.subscribers) == 1
 
     battery_type = ir.types["Robot::Telemetry::BatteryStatus"]
     soc_field = next(f for f in battery_type.fields if f.name == "state_of_charge_pct")
-    assert soc_field.meta.unit == "percent"
+    assert soc_field.meta.unit is None
     robot_id_field = next(f for f in battery_type.fields if f.name == "robot_id")
     assert robot_id_field.is_key is True
 

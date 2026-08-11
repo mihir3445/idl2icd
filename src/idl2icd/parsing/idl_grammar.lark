@@ -3,8 +3,7 @@
 // enums, typedefs, sequences/arrays, bounded strings, @annotations, consts.
 //
 // NOTE: this is a pragmatic subset for idl2icd v0.1, not a full IDL4
-// compiler front-end. See ROADMAP.md for the planned ANTLR4-based
-// full-grammar migration.
+// compiler front-end. See ROADMAP.md for the planned full-grammar migration.
 
 start: definition*
 

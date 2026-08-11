@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -26,6 +29,24 @@ app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(plugins_app, name="plugins")
 app.add_typer(metadata_app, name="metadata")
 console = Console()
+
+
+def _open_path(path: str | Path) -> bool:
+    """Open a file or directory using the platform's default application."""
+    target = Path(path).expanduser().resolve()
+    if not target.exists():
+        return False
+
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(str(target))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(target)], check=False)
+        else:
+            subprocess.run(["xdg-open", str(target)], check=False)
+        return True
+    except OSError:
+        return False
 
 
 def _pdf_unavailable_message(exc: Exception) -> str:
@@ -139,6 +160,7 @@ def validate(config: str = typer.Option("idl2icd.yaml", "--config", "-c")):
 def build(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
     format: str = typer.Option("site", "--format", help="site | pdf | docx | all"),
+    open_output: bool = typer.Option(False, "--open", help="Open the generated output using the platform default application"),
 ):
     """Full pipeline: parse -> validate -> render site, PDF, and/or docx."""
     cfg, ir, diagnostics = _build_ir_and_diagnostics(config)
@@ -156,6 +178,12 @@ def build(
             show_topic_rate=cfg.diagrams.show_topic_rate,
         )
         console.print(f"[green]Site written to {out_dir}[/green]")
+        if open_output:
+            opened = _open_path(out_dir / "index.html")
+            if opened:
+                console.print(f"[green]Opened {out_dir / 'index.html'}[/green]")
+            else:
+                console.print(f"[yellow]Unable to open {out_dir / 'index.html'} automatically on this platform.[/yellow]")
 
     if format in ("pdf", "all"):
         from idl2icd.render.pdf.renderer import render_pdf
@@ -170,6 +198,12 @@ def build(
                 show_topic_rate=cfg.diagrams.show_topic_rate,
             )
             console.print(f"[green]PDF written to {pdf_path}[/green]")
+            if open_output:
+                opened = _open_path(pdf_path)
+                if opened:
+                    console.print(f"[green]Opened {pdf_path}[/green]")
+                else:
+                    console.print(f"[yellow]Unable to open {pdf_path} automatically on this platform.[/yellow]")
         except (ImportError, OSError) as exc:
             console.print(f"[yellow]{escape(_pdf_unavailable_message(exc))}[/yellow]")
 
@@ -186,6 +220,12 @@ def build(
                 show_topic_rate=cfg.diagrams.show_topic_rate,
             )
             console.print(f"[green]Word document written to {docx_path}[/green]")
+            if open_output:
+                opened = _open_path(docx_path)
+                if opened:
+                    console.print(f"[green]Opened {docx_path}[/green]")
+                else:
+                    console.print(f"[yellow]Unable to open {docx_path} automatically on this platform.[/yellow]")
         except ImportError:
             msg = "Word export requires the optional 'docx' extra: pip install 'idl2icd[docx]'"
             console.print(f"[yellow]{escape(msg)}[/yellow]")

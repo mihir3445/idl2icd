@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Implemented (v0.4)
+
 - Lark-based OMG IDL subset parser: modules, structs, unions, enums, sequences,
   bounded strings, arrays, `@key`/`@optional`/`@topic` annotations, `/** */`
   and `///` doc-comment association.
@@ -21,14 +22,14 @@
 - **Snapshot + change-report engine**: `idl2icd snapshot save` / `idl2icd
   diff --against <snapshot>` — semantic diff (breaking / additive /
   informational) keyed by FQN.
-- **`idl2icd schema`**: generates JSON Schema from the Pydantic metadata and
-  project-config models, for editor autocompletion. Verified by actually
-  validating the real example YAML files against the generated schema (and
-  confirming an unknown-key document is correctly rejected), not just
-  checking the schema parses. `examples/robot-fleet/.vscode/settings.json`
+- **Pydantic-generated JSON Schema**: the metadata and project-config models
+  are used to generate JSON Schema for editor autocompletion. This is
+  verified by validating the real example YAML files against the generated
+  schema (and confirming an unknown-key document is correctly rejected), not
+  just checking the schema parses. `examples/robot-fleet/.vscode/settings.json`
   wires this up for VS Code's YAML extension out of the box.
 - CLI: `validate`, `build --format site|pdf|docx|all`, `diff`,
-  `snapshot save`, `plugins list`, `schema`, `doctor`.
+  `snapshot save`, `plugins list`, `metadata generate`, `doctor`.
 - **`LICENSE`** (Apache-2.0, matching what `pyproject.toml` already declared
   — this was missing before and is a real gap for a public GitHub repo).
 - **`CONTRIBUTING.md`** — dev setup, where each extension point lives, and
@@ -46,6 +47,7 @@
   docx to the GitHub Release.
 
 ## Attempted and genuinely blocked in this environment (not a design gap)
+
 - **Mermaid → image embedding for PDF/docx** via `mermaid-cli` (`mmdc`):
   I tried installing it in this sandbox. It failed because Puppeteer's
   bundled Chromium download is blocked by this environment's network
@@ -58,6 +60,7 @@
   `mmdc` isn't on PATH) and then verified for real in CI, not assumed.
 
 ## Designed, not yet implemented (see ARCHITECTURE.md for full spec)
+
 - **SARIF export** of validation diagnostics for GitHub code-scanning
   annotations.
 - **Sequence-diagram generation** for request/reply topic pairs.
@@ -65,21 +68,22 @@
   rule is still a simplified single-topic heuristic (criticality vs.
   reliability), not yet a per-subscriber requested-vs-offered comparison
   or a rendered pairwise compatibility matrix.
-- **Full OMG IDL 4.2 grammar** via an ANTLR4 migration (typedefs surfaced
+- **Full OMG IDL 4.2 grammar** via a future grammar expansion (typedefs surfaced
   into the IR, `#include`/`#ifdef` preprocessing, fixed-point types,
   bitmask/bitset, forward declarations).
 - **`idl2icd init`** scaffolding command and **`idl2icd serve`** live-reload
-  dev server.
+  dev server (both still design-only).
 - **Example third-party plugins** (e.g. a Confluence exporter, a live DDS
   domain-introspection enricher) to prove out the plugin API end-to-end
   from outside the core package — the API is currently only exercised by
   the in-tree `CorePlugin`.
 
 ## Suggested next session
+
 1. Wire `mmdc` into the PDF/docx paths (see "genuinely blocked" above) —
    this needs to run in an environment with real internet access to verify.
 2. Build a real per-subscriber RxO compatibility check + rendered QoS
    matrix page (site, PDF, and docx), replacing the current heuristic.
 3. Write one real example plugin package (e.g. a Confluence or Markdown
-   exporter) living outside `src/dds_icd/`, registered via an entry point,
+   exporter) living outside `src/idl2icd/`, registered via an entry point,
    to validate the plugin API isn't just internally self-consistent.
