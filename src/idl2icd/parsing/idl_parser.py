@@ -309,11 +309,12 @@ def _resolve_type_ref(type_ref: TypeRef, scope: list[str], types: dict[str, AnyT
 
 
 def _resolve_named_type_name(name: str, scope: list[str], types: dict[str, AnyType]) -> str | None:
-    if "::" in name:
-        return name if name in types else None
+    parts = name.split("::")
+    if not parts:
+        return None
 
     for prefix_len in range(len(scope), -1, -1):
-        candidate = "::".join([*scope[:prefix_len], name])
+        candidate = "::".join([*scope[:prefix_len], *parts])
         if candidate in types:
             return candidate
     return None

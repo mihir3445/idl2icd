@@ -28,8 +28,8 @@ def test_parses_example_idl_and_merges_metadata():
 
     battery = ir.topics["Robot::Telemetry::BatteryStatus"]
     assert battery.criticality is None
-    assert battery.qos.reliability == "BEST_EFFORT"
-    assert battery.qos.durability == "VOLATILE"
+    assert battery.qos.reliability == "RELIABLE"
+    assert battery.qos.durability == "TRANSIENT_LOCAL"
     assert len(battery.publishers) == 1
     assert len(battery.subscribers) == 1
 
@@ -38,6 +38,28 @@ def test_parses_example_idl_and_merges_metadata():
     assert soc_field.meta.unit is None
     robot_id_field = next(f for f in battery_type.fields if f.name == "robot_id")
     assert robot_id_field.is_key is True
+
+
+def test_example_bundle_includes_complex_variations_and_edge_cases():
+    cfg = load_config(EXAMPLE_DIR / "idl2icd.yaml")
+    project = ProjectMeta(**cfg.project.model_dump())
+    ir = build_ir(
+        cfg.resolve_idl_paths(),
+        cfg.resolve_metadata_paths(),
+        project,
+        include_dirs=cfg.resolve_include_paths(),
+    )
+
+    assert "Robot::Telemetry::Navigation::Pose3d" in ir.types
+    assert "Robot::Telemetry::ObservationEnvelope" in ir.types
+    assert "Robot::Telemetry::AlertSeverity" in ir.types
+
+    battery_type = ir.types["Robot::Telemetry::BatteryStatus"]
+    warning_codes = next(f for f in battery_type.fields if f.name == "warning_codes")
+    assert warning_codes.type_ref.kind == "sequence"
+
+    envelope = ir.types["Robot::Telemetry::ObservationEnvelope"]
+    assert envelope.kind == "union"
 
 
 def test_qos_compatibility_rule_flags_bad_pairing(tmp_path):

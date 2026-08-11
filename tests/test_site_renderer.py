@@ -44,3 +44,21 @@ module X {
 
     html = (tmp_path / "out" / "types" / "X.Y.Another.html").read_text()
     assert 'href="../types/X.Y.Body.html"' in html
+
+
+def test_site_renderer_links_named_types_inside_sequences_to_type_pages(tmp_path):
+    idl_path = tmp_path / "sample.idl"
+    idl_path.write_text("""
+module x {
+  module y {
+    struct Wheel { long size; };
+    struct WheelData { sequence<Wheel, 10> wheels; };
+  };
+};
+""")
+
+    ir = build_ir([idl_path], [], ProjectMeta(name="t", version="1"))
+    render_site(ir, [], tmp_path / "out")
+
+    html = (tmp_path / "out" / "types" / "x.y.WheelData.html").read_text()
+    assert 'href="../types/x.y.Wheel.html"' in html
