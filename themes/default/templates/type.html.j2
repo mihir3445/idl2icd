@@ -1,0 +1,38 @@
+{% extends "base.html.j2" %}
+{% block title %}{{ type_.fqn }} — {{ project.name }}{% endblock %}
+{% block content %}
+<h1>{{ type_.fqn }}</h1>
+{% if type_.doc %}<p>{{ type_.doc }}</p>{% else %}<p><em>No description provided.</em></p>{% endif %}
+
+{% if type_.kind == "struct" %}
+<h2>Fields</h2>
+<table class="fields">
+  <thead><tr><th>Field</th><th>Type</th><th>Key</th><th>Unit</th><th>Description</th></tr></thead>
+  <tbody>
+  {% for f in type_.fields %}
+    <tr>
+      <td>{{ f.name }}</td>
+      <td>{{ f.type_ref_html|safe }}</td>
+      <td>{{ "🔑" if f.is_key else "" }}</td>
+      <td>{{ f.meta.unit or "" }}</td>
+      <td>{{ f.meta.description or f.doc or "" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% elif type_.kind == "enum" %}
+<h2>Values</h2>
+<ul>
+  {% for value in type_.enum_values %}<li>{{ value }}</li>{% endfor %}
+</ul>
+{% elif type_.kind == "union" %}
+<h2>Discriminator</h2>
+<p>{{ type_.discriminator.render() }}</p>
+<h2>Cases</h2>
+<ul>
+  {% for case in type_.cases %}
+    <li>{{ case.labels|join(", ") }} — {{ case.field.name }}: {{ case.field.type_ref.render() }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

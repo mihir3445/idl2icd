@@ -5,6 +5,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from idl2icd.model.ir import AnyType
+
 from idl2icd.diagrams.pubsub_graph import (
     generate_pubsub_graph,
     generate_type_diagram_for_struct,
@@ -12,6 +14,52 @@ from idl2icd.diagrams.pubsub_graph import (
 from idl2icd.model.ir import Diagnostic, IRModel
 
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
+
+
+def _type_link_html(type_ref, ir: IRModel) -> str:
+    if type_ref.kind != "named":
+        return f"<code>{type_ref.render()}</code>"
+
+    target = ir.types.get(type_ref.name)
+    if target is None:
+        return f"<code>{type_ref.render()}</code>"
+
+    href = f"../types/{target.fqn.replace('::', '.')}.html"
+    return f'<a href="{href}"><code>{type_ref.render()}</code></a>'
+
+
+def _prepare_type_context(type_: AnyType, ir: IRModel) -> dict:
+    fields = []
+    if type_.kind == "struct":
+        for field in type_.fields:
+            fields.append({
+                "name": field.name,
+                "is_key": field.is_key,
+                "type_ref_html": _type_link_html(field.type_ref, ir),
+                "meta": field.meta,
+                "doc": field.doc,
+            })
+    values = getattr(type_, "values", None)
+    if values is None:
+        values = []
+    elif not isinstance(values, list):
+        values = list(values)
+
+    cases = getattr(type_, "cases", None)
+    if cases is None:
+        cases = []
+    elif not isinstance(cases, list):
+        cases = list(cases)
+
+    return {
+        "fqn": type_.fqn,
+        "kind": type_.kind,
+        "doc": type_.doc,
+        "fields": fields,
+        "enum_values": values,
+        "discriminator": getattr(type_, "discriminator", None),
+        "cases": cases,
+    }
 
 
 def render_site(
@@ -49,6 +97,10 @@ def render_site(
     topics_dir = out_dir / "topics"
     topics_dir.mkdir(exist_ok=True)
     topic_tpl = env.get_template("topic.html.j2")
+    types_dir = out_dir / "types"
+    types_dir.mkdir(exist_ok=True)
+    type_tpl = env.get_template("type.html.j2")
+
     for topic in all_topics:
         data_type = ir.types.get(topic.data_type_fqn)
         fields_for_render = []
@@ -58,6 +110,7 @@ def render_site(
                 fields_for_render.append({
                     "name": f.name, "is_key": f.is_key,
                     "type_ref_render": f.type_ref.render(),
+                    "type_ref_html": _type_link_html(f.type_ref, ir),
                     "meta": f.meta, "doc": f.doc,
                 })
             type_diagram = generate_type_diagram_for_struct(data_type)
@@ -70,3 +123,13 @@ def render_site(
         )
         fname = topic.fqn.replace("::", ".") + ".html"
         (topics_dir / fname).write_text(html)
+
+    for type_ in ir.types.values():
+        type_html = type_tpl.render(
+            project=ir.project,
+            type_=_prepare_type_context(type_, ir),
+            all_topics=all_topics,
+            asset_prefix="../",
+        )
+        fname = type_.fqn.replace("::", ".") + ".html"
+        (types_dir / fname).write_text(type_html)
