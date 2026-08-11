@@ -75,6 +75,9 @@ def render_site(
         direction=direction,
         show_topic_qos=show_topic_qos,
         show_topic_rate=show_topic_rate,
+        # The pubsub graph is rendered on the site-root index page, so topic
+        # links resolve relative to the root: "topics/<fqn>.html".
+        topic_base_path="topics/",
     )
 
     index_tpl = env.get_template("index.html.j2")

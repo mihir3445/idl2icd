@@ -12,6 +12,7 @@ def generate_pubsub_graph(
     direction: str = "LR",
     show_topic_qos: bool = False,
     show_topic_rate: bool = False,
+    topic_base_path: str = "topics/",
 ) -> str:
     lines = [f"flowchart {direction}"]
     lines.append("    classDef participant fill:#f8fafc,stroke:#0f172a,stroke-width:1px")
@@ -56,7 +57,9 @@ def generate_pubsub_graph(
         if segments:
             label += "<br>[" + " | ".join(segments) + "]"
 
-        lines.append(f'    {tid}(("{label}"))')
+        topic_path = f"{topic_base_path}{topic.fqn.replace('::', '.')}.html"
+        lines.append(f'    {tid}("{label}")')
+        lines.append(f'    click {tid} "{topic_path}"')
         lines.append(f"    class {tid} topic")
         if topic.criticality == "high":
             lines.append(f"    class {tid} critical")

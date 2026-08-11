@@ -62,3 +62,34 @@ module x {
 
     html = (tmp_path / "out" / "types" / "x.y.WheelData.html").read_text()
     assert 'href="../types/x.y.Wheel.html"' in html
+
+
+def test_site_renderer_mermaid_topic_links_point_to_root_topics(tmp_path):
+    idl_path = tmp_path / "sample.idl"
+    idl_path.write_text("""
+module X {
+  module Y {
+    struct Body { long x; };
+  };
+};
+""")
+    meta_path = tmp_path / "sample.yaml"
+    meta_path.write_text("""
+topics:
+  X::Y::Body:
+    description: A sample topic.
+    publishers:
+    - participant: Pub
+    subscribers:
+    - participant: Sub
+""")
+    ir = build_ir([idl_path], [meta_path], ProjectMeta(name="t", version="1"))
+    render_site(ir, [], tmp_path / "out")
+
+    index_html = (tmp_path / "out" / "index.html").read_text()
+    # The graph lives on the site-root page, so topic links must be relative to
+    # the root ("topics/<fqn>.html") and NOT jump outside the site ("../topics/...").
+    # (&#34; is Jinja's HTML-escaped quote; mermaid decodes it back to '"'.)
+    assert 'click n_X__Y__Body &#34;topics/X.Y.Body.html&#34;' in index_html
+    assert "../topics/" not in index_html
+

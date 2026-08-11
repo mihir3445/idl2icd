@@ -5,7 +5,13 @@
 <title>{% block title %}{{ project.name }}{% endblock %}</title>
 <link rel="stylesheet" href="{{ asset_prefix }}static/css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
-<script>mermaid.initialize({ startOnLoad: true, theme: "neutral" });</script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "neutral",
+    securityLevel: "loose"
+  });
+</script>
 </head>
 <body>
 <header class="topbar">
