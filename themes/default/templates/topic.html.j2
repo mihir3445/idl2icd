@@ -27,7 +27,7 @@
   {% for f in data_type.fields %}
     <tr>
       <td>{{ f.name }}</td>
-      <td>{{ f.type_ref_html|safe }}</td>
+      <td>{{ f.type_ref_html }}</td>
       <td>{{ "🔑" if f.is_key else "" }}</td>
       <td>{{ f.meta.unit or "" }}</td>
       <td>{{ f.meta.description or f.doc or "" }}</td>

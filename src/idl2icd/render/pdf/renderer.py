@@ -6,6 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph
 from idl2icd.model.ir import Diagnostic, IRModel
+from idl2icd.render.helpers import format_type_ref
 
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 
@@ -36,7 +37,7 @@ def render_pdf(
             for f in data_type.fields:
                 fields.append({
                     "name": f.name, "is_key": f.is_key,
-                    "type_ref_render": f.type_ref.render(),
+                    "type_ref_render": format_type_ref(f.type_ref, ir),
                     "meta": f.meta, "doc": f.doc,
                 })
         all_topics.append({

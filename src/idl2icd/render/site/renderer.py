@@ -6,6 +6,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from idl2icd.model.ir import AnyType
+from idl2icd.render.helpers import format_type_ref
 
 from idl2icd.diagrams.pubsub_graph import (
     generate_pubsub_graph,
@@ -16,18 +17,6 @@ from idl2icd.model.ir import Diagnostic, IRModel
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 
 
-def _type_link_html(type_ref, ir: IRModel) -> str:
-    if type_ref.kind != "named":
-        return f"<code>{type_ref.render()}</code>"
-
-    target = ir.types.get(type_ref.name)
-    if target is None:
-        return f"<code>{type_ref.render()}</code>"
-
-    href = f"../types/{target.fqn.replace('::', '.')}.html"
-    return f'<a href="{href}"><code>{type_ref.render()}</code></a>'
-
-
 def _prepare_type_context(type_: AnyType, ir: IRModel) -> dict:
     fields = []
     if type_.kind == "struct":
@@ -35,7 +24,7 @@ def _prepare_type_context(type_: AnyType, ir: IRModel) -> dict:
             fields.append({
                 "name": field.name,
                 "is_key": field.is_key,
-                "type_ref_html": _type_link_html(field.type_ref, ir),
+                "type_ref_html": format_type_ref(field.type_ref, ir, as_html=True),
                 "meta": field.meta,
                 "doc": field.doc,
             })
@@ -71,7 +60,7 @@ def render_site(
     show_topic_rate: bool = False,
 ):
     templates_dir = THEME_DIR / "templates"
-    env = Environment(loader=FileSystemLoader(str(templates_dir)))
+    env = Environment(loader=FileSystemLoader(str(templates_dir)), autoescape=True)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     static_src = THEME_DIR / "static"
@@ -109,8 +98,8 @@ def render_site(
             for f in data_type.fields:
                 fields_for_render.append({
                     "name": f.name, "is_key": f.is_key,
-                    "type_ref_render": f.type_ref.render(),
-                    "type_ref_html": _type_link_html(f.type_ref, ir),
+                    "type_ref_render": format_type_ref(f.type_ref, ir),
+                    "type_ref_html": format_type_ref(f.type_ref, ir, as_html=True),
                     "meta": f.meta, "doc": f.doc,
                 })
             type_diagram = generate_type_diagram_for_struct(data_type)

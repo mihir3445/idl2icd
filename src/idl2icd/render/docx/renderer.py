@@ -19,6 +19,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph
 from idl2icd.model.ir import Diagnostic, IRModel
+from idl2icd.render.helpers import format_type_ref
 
 _CRIT_COLOR = {
     "safety": RGBColor(0xD1, 0x49, 0x5B),
@@ -206,7 +207,7 @@ def render_docx(
         doc.add_heading(f"Data Type: {topic.data_type_fqn}", level=2)
         if data_type and data_type.kind == "struct":
             field_rows = [
-                [f.name, f.type_ref.render(), "yes" if f.is_key else "",
+                [f.name, format_type_ref(f.type_ref, ir), "yes" if f.is_key else "",
                  f.meta.unit or "", f.meta.description or f.doc or ""]
                 for f in data_type.fields
             ]
