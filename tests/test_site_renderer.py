@@ -26,3 +26,21 @@ def test_site_renderer_links_named_field_types_to_type_pages(tmp_path):
 
     html = topic_page.read_text()
     assert 'href="../types/Robot.Telemetry.SharedId.html"' in html
+
+
+def test_site_renderer_links_nested_module_types_to_type_pages(tmp_path):
+    idl_path = tmp_path / "sample.idl"
+    idl_path.write_text("""
+module X {
+  module Y {
+    struct Body { long x; };
+    struct Another { Body value; };
+  };
+};
+""")
+
+    ir = build_ir([idl_path], [], ProjectMeta(name="t", version="1"))
+    render_site(ir, [], tmp_path / "out")
+
+    html = (tmp_path / "out" / "types" / "X.Y.Another.html").read_text()
+    assert 'href="../types/X.Y.Body.html"' in html

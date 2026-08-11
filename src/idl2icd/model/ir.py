@@ -25,8 +25,10 @@ class TypeRef(BaseModel):
     array_dims: list[int] = Field(default_factory=list)
 
     def render(self) -> str:
-        if self.kind == "primitive" or self.kind == "named":
+        if self.kind == "primitive":
             base = self.name
+        elif self.kind == "named":
+            base = self.name.split("::")[-1]
         elif self.kind == "string":
             base = f"string<{self.bound}>" if self.bound else "string"
         elif self.kind == "sequence":

@@ -8,6 +8,7 @@ from lark import Lark, Token, Tree
 from lark.exceptions import UnexpectedCharacters, UnexpectedToken
 
 from idl2icd.model.ir import (
+    AnyType,
     EnumType,
     Field_,
     SourceSpan,
@@ -82,6 +83,7 @@ def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> 
         raise ValueError(msg) from exc
     out = ParsedFile()
     _walk(tree, scope=[], filename=str(path), doc_index=doc_index, out=out)
+    _resolve_type_refs(out.types)
     return out
 
 
@@ -278,6 +280,43 @@ def _walk_definitions(defs: list[Tree], scope: list[str], filename: str, doc_ind
 def _doc_for(node, doc_index) -> str | None:
     line = _line_of(node)
     return doc_index.for_line(line) if line else None
+
+
+def _resolve_type_refs(types: dict[str, AnyType]) -> None:
+    for fqn, type_ in types.items():
+        scope = fqn.split("::")[:-1]
+        if isinstance(type_, StructType):
+            for field in type_.fields:
+                field.type_ref = _resolve_type_ref(field.type_ref, scope, types)
+        elif isinstance(type_, UnionType):
+            type_.discriminator = _resolve_type_ref(type_.discriminator, scope, types)
+            for case in type_.cases:
+                case.field.type_ref = _resolve_type_ref(case.field.type_ref, scope, types)
+
+
+def _resolve_type_ref(type_ref: TypeRef, scope: list[str], types: dict[str, AnyType]) -> TypeRef:
+    if type_ref.kind == "sequence":
+        element = _resolve_type_ref(type_ref.element, scope, types) if type_ref.element else None
+        return TypeRef(kind="sequence", name="sequence", element=element, bound=type_ref.bound)
+    if type_ref.kind == "array":
+        element = _resolve_type_ref(type_ref.element, scope, types) if type_ref.element else None
+        return TypeRef(kind="array", name=type_ref.name, element=element, array_dims=type_ref.array_dims)
+    if type_ref.kind != "named":
+        return type_ref.model_copy(deep=True)
+
+    resolved_name = _resolve_named_type_name(type_ref.name, scope, types)
+    return TypeRef(kind="named", name=resolved_name or type_ref.name)
+
+
+def _resolve_named_type_name(name: str, scope: list[str], types: dict[str, AnyType]) -> str | None:
+    if "::" in name:
+        return name if name in types else None
+
+    for prefix_len in range(len(scope), -1, -1):
+        candidate = "::".join([*scope[:prefix_len], name])
+        if candidate in types:
+            return candidate
+    return None
 
 
 def _type_spec_to_ref(node: Tree) -> TypeRef:
