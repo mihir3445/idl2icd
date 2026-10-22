@@ -36,17 +36,12 @@ class DiagramsSection(BaseModel):
     show_topic_rate: bool = False
 
 
-class PluginsSection(BaseModel):
-    enabled: list[str] = Field(default_factory=list)
-
-
 class ProjectConfig(BaseModel):
     project: ProjectSection
     sources: SourcesSection
     output: OutputSection = Field(default_factory=OutputSection)
     validation: ValidationSection = Field(default_factory=ValidationSection)
     diagrams: DiagramsSection = Field(default_factory=DiagramsSection)
-    plugins: PluginsSection = Field(default_factory=PluginsSection)
 
     _base_dir: Path = PrivateAttr(default=None)
 

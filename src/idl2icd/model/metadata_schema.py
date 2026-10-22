@@ -4,36 +4,35 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from idl2icd.model.ir import (
+    Endpoint,
+    FieldMeta,
+    QoSDeadline,
+    QoSHistory,
+    QoSLiveliness,
+    RateSpec,
+)
 
-class MetaField(BaseModel):
+
+class MetaField(FieldMeta):
     model_config = ConfigDict(extra="forbid")
-    unit: str | None = None
-    range: list[float] | None = None
-    precision: float | None = None
-    description: str | None = None
 
 
-class MetaRate(BaseModel):
+class MetaRate(RateSpec):
     model_config = ConfigDict(extra="forbid")
-    nominal_hz: float | None = None
-    max_hz: float | None = None
 
 
-class MetaEndpoint(BaseModel):
+class MetaEndpoint(Endpoint):
     model_config = ConfigDict(extra="forbid")
-    participant: str
-    instance_count: str | None = None
-    source: str | None = None
-    notes: str | None = None
 
 
 class MetaQoSOverride(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reliability: Literal["BEST_EFFORT", "RELIABLE"] | None = None
     durability: Literal["VOLATILE", "TRANSIENT_LOCAL", "TRANSIENT", "PERSISTENT"] | None = None
-    history: dict | None = None
-    deadline: dict | None = None
-    liveliness: dict | None = None
+    history: QoSHistory | None = None
+    deadline: QoSDeadline | None = None
+    liveliness: QoSLiveliness | None = None
 
 
 class MetaQoS(BaseModel):

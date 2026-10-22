@@ -6,7 +6,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph
 from idl2icd.model.ir import Diagnostic, IRModel
-from idl2icd.render.helpers import format_type_ref
+from idl2icd.render.helpers import struct_fields_context
 
 THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
 
@@ -34,12 +34,7 @@ def render_pdf(
         data_type = ir.types.get(topic.data_type_fqn)
         fields = []
         if data_type and data_type.kind == "struct":
-            for f in data_type.fields:
-                fields.append({
-                    "name": f.name, "is_key": f.is_key,
-                    "type_ref_render": format_type_ref(f.type_ref, ir),
-                    "meta": f.meta, "doc": f.doc,
-                })
+            fields = struct_fields_context(data_type, ir)
         all_topics.append({
             **topic.model_dump(),
             "data_type": {"fqn": data_type.fqn if data_type else "?", "fields": fields},

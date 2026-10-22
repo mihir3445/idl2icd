@@ -86,7 +86,6 @@ Here is the short version of what `idl2icd --help` exposes:
 - `idl2icd diff` — compare the current build against an earlier snapshot and show what changed.
 - `idl2icd doctor` — check that the required Python packages and PDF export support are available.
 - `idl2icd snapshot save` — save a frozen snapshot of the current model for later comparisons.
-- `idl2icd plugins list` — list the available plugins.
 - `idl2icd metadata generate` — create starter metadata YAML files from your IDL.
 
 A few useful examples:

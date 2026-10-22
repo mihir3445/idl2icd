@@ -86,19 +86,5 @@ def _struct_class_lines(struct) -> list[str]:
 
 
 def generate_type_diagram_for_struct(struct) -> str:
-    """Generate a complete Mermaid classDiagram for a single struct type.
-
-    This is the lightweight helper callers should use when they only need a
-    diagram for one type — no IRModel construction or re-validation required.
-    """
+    """Generate a complete Mermaid classDiagram for a single struct type."""
     return "\n".join(["classDiagram", *_struct_class_lines(struct)])
-
-
-def generate_type_diagram(ir: IRModel) -> str:
-    """Generate a Mermaid classDiagram for all struct types in the IR."""
-    lines = ["classDiagram"]
-    for t in ir.types.values():
-        if t.kind != "struct":
-            continue
-        lines.extend(_struct_class_lines(t))
-    return "\n".join(lines)

@@ -16,17 +16,14 @@ from idl2icd.config import load_config
 from idl2icd.metadata_gen import generate_metadata_for_idl
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
-from idl2icd.plugins.loader import build_plugin_manager, list_available_plugins
 from idl2icd.render.site.renderer import render_site
 from idl2icd.snapshot import diff_ir, load_snapshot, save_snapshot
 from idl2icd.validation.engine import SEVERITY_RANK, run_rules, worst_severity
 
 app = typer.Typer(help="idl2icd: generate an Interface Control Document from OMG IDL + metadata.")
 snapshot_app = typer.Typer(help="Manage frozen IR snapshots used for change reports.")
-plugins_app = typer.Typer(help="Inspect available idl2icd plugins.")
 metadata_app = typer.Typer(help="Generate skeleton metadata YAML files from IDL.")
 app.add_typer(snapshot_app, name="snapshot")
-app.add_typer(plugins_app, name="plugins")
 app.add_typer(metadata_app, name="metadata")
 console = Console()
 
@@ -86,18 +83,29 @@ def _pdf_unavailable_message(exc: Exception) -> str:
     )
 
 
-def _build_ir_and_diagnostics(config_path: str):
+def _maybe_open(path: Path):
+    """Open a generated artifact with the platform default app; report if unsupported."""
+    opened = _open_path(path)
+    if opened:
+        console.print(f"[green]Opened {path}[/green]")
+    else:
+        console.print(f"[yellow]Unable to open {path} automatically on this platform.[/yellow]")
+
+
+def _load_config(config: str):
+    """Load + validate the project config, or print the error and exit."""
     try:
-        cfg = load_config(config_path)
+        return load_config(config)
     except FileNotFoundError:
-        console.print(f"[red]Config file not found: {config_path}[/red]")
-        raise typer.Exit(code=1)
-    except ValidationError as exc:
-        console.print(f"[red]Configuration validation failed:\n{exc}[/red]")
-        raise typer.Exit(code=1)
-    except ValueError as exc:
+        console.print(f"[red]Config file not found: {config}[/red]")
+        raise typer.Exit(code=1) from None
+    except (ValidationError, ValueError) as exc:
         console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
+
+
+def _build_ir_and_diagnostics(config_path: str):
+    cfg = _load_config(config_path)
 
     project = ProjectMeta(**cfg.project.model_dump())
     idl_paths = cfg.resolve_idl_paths()
@@ -112,11 +120,6 @@ def _build_ir_and_diagnostics(config_path: str):
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)
-
-    pm = build_plugin_manager(enabled=cfg.plugins.enabled or None)
-    for result in pm.hook.on_ir_built(ir=ir):
-        if result is not None:
-            ir = result
 
     diagnostics = run_rules(ir, severities=cfg.validation.rules)
     return cfg, ir, diagnostics
@@ -179,11 +182,7 @@ def build(
         )
         console.print(f"[green]Site written to {out_dir}[/green]")
         if open_output:
-            opened = _open_path(out_dir / "index.html")
-            if opened:
-                console.print(f"[green]Opened {out_dir / 'index.html'}[/green]")
-            else:
-                console.print(f"[yellow]Unable to open {out_dir / 'index.html'} automatically on this platform.[/yellow]")
+            _maybe_open(out_dir / "index.html")
 
     if format in ("pdf", "all"):
         from idl2icd.render.pdf.renderer import render_pdf
@@ -199,11 +198,7 @@ def build(
             )
             console.print(f"[green]PDF written to {pdf_path}[/green]")
             if open_output:
-                opened = _open_path(pdf_path)
-                if opened:
-                    console.print(f"[green]Opened {pdf_path}[/green]")
-                else:
-                    console.print(f"[yellow]Unable to open {pdf_path} automatically on this platform.[/yellow]")
+                _maybe_open(pdf_path)
         except (ImportError, OSError) as exc:
             console.print(f"[yellow]{escape(_pdf_unavailable_message(exc))}[/yellow]")
 
@@ -221,11 +216,7 @@ def build(
             )
             console.print(f"[green]Word document written to {docx_path}[/green]")
             if open_output:
-                opened = _open_path(docx_path)
-                if opened:
-                    console.print(f"[green]Opened {docx_path}[/green]")
-                else:
-                    console.print(f"[yellow]Unable to open {docx_path} automatically on this platform.[/yellow]")
+                _maybe_open(docx_path)
         except ImportError:
             msg = "Word export requires the optional 'docx' extra: pip install 'idl2icd[docx]'"
             console.print(f"[yellow]{escape(msg)}[/yellow]")
@@ -276,13 +267,6 @@ def snapshot_save(
     console.print(f"[green]Snapshot saved to {path}[/green]")
 
 
-@plugins_app.command("list")
-def plugins_list():
-    """List discoverable idl2icd plugins (the 'core' plugin always loads)."""
-    for name in list_available_plugins():
-        console.print(f"- {name}")
-
-
 @metadata_app.command("generate")
 def metadata_generate(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
@@ -301,14 +285,7 @@ def metadata_generate(
     (even those without @topic), so you can decide which ones to promote to
     topics in the metadata YAML.
     """
-    try:
-        cfg = load_config(config)
-    except FileNotFoundError:
-        console.print(f"[red]Config file not found: {config}[/red]")
-        raise typer.Exit(code=1)
-    except (ValidationError, ValueError) as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1)
+    cfg = _load_config(config)
 
     idl_paths = cfg.resolve_idl_paths()
     include_dirs = cfg.resolve_include_paths()
@@ -354,8 +331,8 @@ def metadata_generate(
 @app.command()
 def doctor():
     """Environment sanity check."""
-    import lark, pydantic, jinja2, typer as _t, pluggy  # noqa
-    console.print("[green]lark, pydantic, jinja2, typer, pluggy all importable. Environment OK.[/green]")
+    import lark, pydantic, jinja2, typer as _t  # noqa
+    console.print("[green]lark, pydantic, jinja2, typer all importable. Environment OK.[/green]")
     try:
         import weasyprint  # noqa
         console.print("[green]weasyprint available: PDF export enabled.[/green]")

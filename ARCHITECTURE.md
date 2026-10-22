@@ -19,7 +19,7 @@ IDL files + metadata YAML
 ## Main pieces
 
 - cli.py
-  - Typer entry points for validate, build, diff, snapshot save, plugins list, metadata generate, and doctor.
+  - Typer entry points for validate, build, diff, snapshot save, metadata generate, and doctor.
 - config.py
   - Loads and validates the project config from idl2icd.yaml.
 - parsing/
@@ -31,8 +31,6 @@ IDL files + metadata YAML
   - Rule engine plus built-in validation rules.
 - render/
   - Site renderer, PDF renderer, and Word renderer.
-- plugins/
-  - Pluggy-based extension hooks and plugin discovery.
 - snapshot.py
   - Saves IR snapshots and compares them for semantic change reports.
 - metadata_gen.py
@@ -58,7 +56,6 @@ idl2icd validate
 idl2icd build
 idl2icd diff
 idl2icd snapshot save
-idl2icd plugins list
 idl2icd metadata generate
 idl2icd doctor
 ```
