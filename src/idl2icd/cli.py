@@ -288,6 +288,7 @@ def metadata_generate(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
     output_dir: str = typer.Option("metadata", "--output-dir", "-o", help="Directory to write generated YAML files to"),
     all_structs: bool = typer.Option(False, "--all-structs", "-a", help="Generate entries for ALL structs, not just @topic ones"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing metadata YAML files"),
 ):
     """Generate skeleton metadata YAML files from IDL source files.
 
@@ -319,25 +320,34 @@ def metadata_generate(
     out_dir = base_dir / output_dir
     generated = 0
     skipped = 0
+    up_to_date = 0
 
     for idl_path in idl_paths:
         try:
             result = generate_metadata_for_idl(
-                idl_path, out_dir, include_dirs=include_dirs, all_structs=all_structs,
+                idl_path, out_dir, include_dirs=include_dirs, all_structs=all_structs, overwrite=overwrite,
             )
             if result is not None:
                 console.print(f"  [green]✔[/green] {result}")
                 generated += 1
             else:
                 skipped += 1
+        except FileExistsError as exc:
+            console.print(f"  [yellow]…[/yellow] {exc}")
+            up_to_date += 1
         except ValueError as exc:
             console.print(f"  [red]✖[/red] {idl_path}: {exc}")
 
     if generated:
         console.print(f"\n[green]Generated {generated} metadata file(s) in {out_dir}[/green]")
+    if up_to_date:
+        console.print(
+            f"[yellow]Skipped {up_to_date} existing metadata file(s) "
+            f"(use --overwrite to regenerate)[/yellow]"
+        )
     if skipped:
         console.print(f"[yellow]Skipped {skipped} IDL file(s) with no {'@topic' if not all_structs else 'struct'} definitions[/yellow]")
-    if not generated and not skipped:
+    if not generated and not skipped and not up_to_date:
         console.print("[yellow]No IDL files found to process.[/yellow]")
 
 

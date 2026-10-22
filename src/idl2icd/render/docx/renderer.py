@@ -169,10 +169,7 @@ def render_docx(
         if topic.criticality:
             badge = doc.add_paragraph()
             run = badge.add_run(f"  {topic.criticality.upper()}  ")
-            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
             run.bold = True
-            # crude "badge" via character shading isn't supported per-run in
-            # python-docx without lower-level XML; color the text instead.
             run.font.color.rgb = _CRIT_COLOR.get(topic.criticality, RGBColor(0x66, 0x66, 0x66))
 
         doc.add_paragraph(topic.description or "No description provided.")

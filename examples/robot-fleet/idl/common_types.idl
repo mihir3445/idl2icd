@@ -1,7 +1,41 @@
+#ifndef ROBOT_COMMON_TYPES_GUARD
+#define ROBOT_COMMON_TYPES_GUARD
+
 module Robot {
   module Telemetry {
+    typedef enum {
+      UNKNOWN = 0,
+      ACTIVE = 1,
+      MAINTENANCE = 2,
+    } SensorState;
+
+    enum AssetClass
+    {
+      NONE =0x00,
+      ANY =0x01,
+      LIGHT_VEHICLE = 0x02,
+      EXCAVATOR = 0x04,
+      WHEEL_LOADER = 0x08,
+      MINING_TRUCK= 0x10,
+      AUTONOMUS_MINING_TRUCK = 0x20
+    };
+
+    enum AlertSeverity {
+      INFO = 0,
+      WARNING = 1,
+      CRITICAL = 2,
+    };
+
     struct SharedId {
       unsigned long value;
     };
+
+    struct CoordinateFrame {
+      long zone;
+      double easting;
+      double northing;
+    };
   };
 };
+
+#endif // ROBOT_COMMON_TYPES_GUARD

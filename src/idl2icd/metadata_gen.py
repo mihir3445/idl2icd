@@ -49,7 +49,10 @@ def _struct_to_topic_meta(struct: StructType) -> dict:
     # Placeholder sections. criticality is omitted by default (it's optional
     # in the schema and has a Literal constraint); the user can add it when
     # they know the actual value.
-    entry["qos"] = {"profile": "TODO: reference a qos_profile or define overrides"}
+    # The generated qos_profiles dict defines a `TODO_profile_name` profile,
+    # so reference it here to keep the skeleton metadata consistent and
+    # resolvable (otherwise QoS falls back to BEST_EFFORT silently).
+    entry["qos"] = {"profile": "TODO_profile_name"}
     entry["publishers"] = [
         {"participant": "TODO: PublisherName", "instance_count": "TBD", "source": "TBD"},
     ]
@@ -118,15 +121,24 @@ def generate_metadata_for_idl(
     output_dir: Path,
     include_dirs: list[Path] | None = None,
     all_structs: bool = False,
+    overwrite: bool = False,
 ) -> Path | None:
-    """Parse an IDL file and write a skeleton metadata YAML file next to it
-    (in the output directory). Returns the output path, or None if no structs
-    qualify for metadata generation."""
+    """Parse an IDL file and write a skeleton metadata YAML file in *output_dir*.
+
+    Returns the output path, or None if no structs qualify for metadata
+    generation. Raises FileExistsError if the output file already exists and
+    *overwrite* is False — this prevents clobbering curated/hand-written
+    metadata files.
+    """
     yaml_str = _generate_yaml_for_idl(idl_path, include_dirs=include_dirs, all_structs=all_structs)
     if yaml_str is None:
         return None
 
     out_path = output_dir / (idl_path.stem + ".yaml")
+    if out_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"metadata file already exists: {out_path} (use --overwrite to replace it)"
+        )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(yaml_str)
     return out_path

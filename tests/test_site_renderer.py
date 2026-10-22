@@ -5,7 +5,6 @@ from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
 from idl2icd.render.site.renderer import render_site
 
-
 EXAMPLE_DIR = Path(__file__).parent.parent / "examples" / "robot-fleet"
 
 

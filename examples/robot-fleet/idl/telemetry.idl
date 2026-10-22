@@ -11,6 +11,43 @@ module Robot {
       ACTIVE = 1,
     };
 
+    module Navigation {
+      struct Pose3d {
+        double x;
+        double y;
+        double z;
+      };
+    };
+
+    const uint8 MAX_WHEEL_PER_ASSET = 10;
+    typedef uint32 SensorId;
+
+    enum sensorConnectivityStatus {
+      NORMAL,
+      NO_CONNECTIVITY
+    };
+
+    @nested
+    struct Wheel {
+      @optional int32 temperature;
+      @optional SensorId tyre_sensor_id;
+    };
+
+    @nested
+    struct WheelData {
+      sequence<Wheel, MAX_WHEEL_PER_ASSET> wheels;
+    };
+
+    union ObservationEnvelope switch(AlertSeverity)
+    {
+      case INFO:
+        SharedId id;
+      case WARNING:
+        string warning_message;
+      case CRITICAL:
+        sequence<SharedId> related_ids;
+    };
+
     /**
      * Periodic battery state broadcast by every mobile platform.
      */
@@ -21,6 +58,12 @@ module Robot {
       float voltage;
       unsigned long long timestamp;
       Robot::Telemetry::SharedId source_id;
+      sequence<unsigned long> warning_codes;
+      ChannelState channel_state;
+      @optional string notes;
+      ObservationEnvelope envelope;
+      Navigation::Pose3d pose;
+      sequence<Navigation::Pose3d> sample_poses;
     };
 
     /// Emitted once when a robot's charge drops below a safety threshold.
@@ -29,6 +72,8 @@ module Robot {
       @key unsigned long robot_id;
       string message;
       unsigned long long timestamp;
+      AlertSeverity severity;
+      sequence<SharedId> related_assets;
     };
 
   };

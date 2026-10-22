@@ -25,7 +25,6 @@ def _render_type_ref_markup(type_ref: TypeRef, ir: IRModel) -> Markup:
             bound = f", {type_ref.bound}" if type_ref.bound is not None else ""
             return Markup(f"<code>sequence&lt;{element}{escape(bound)}&gt;</code>")
 
-        dims = "".join(f"[{d}]" for d in type_ref.array_dims)
         return Markup(f"<code>{escape(type_ref.render())}</code>")
 
     return Markup(f"<code>{escape(rendered)}</code>")

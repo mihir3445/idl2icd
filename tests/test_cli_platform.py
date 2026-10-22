@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import idl2icd.cli as cli
+from idl2icd import cli
 
 
 def test_open_path_uses_platform_launcher(monkeypatch, tmp_path: Path):
@@ -8,7 +8,6 @@ def test_open_path_uses_platform_launcher(monkeypatch, tmp_path: Path):
 
     def fake_run(cmd, check=False):
         calls.append(cmd)
-        return None
 
     monkeypatch.setattr(cli.sys, "platform", "linux", raising=False)
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
