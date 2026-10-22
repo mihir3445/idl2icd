@@ -7,18 +7,19 @@ from pydantic import ValidationError
 
 from idl2icd.model.ir import (
     Diagnostic,
-    Endpoint,
     IRModel,
     ProjectMeta,
-    QoSDeadline,
-    QoSHistory,
-    QoSLiveliness,
-    RateSpec,
     ResolvedQoS,
     StructType,
     Topic,
 )
-from idl2icd.model.metadata_schema import MetadataFile
+from idl2icd.model.metadata_schema import (
+    MetadataFile,
+    MetaField,
+    MetaQoS,
+    MetaQoSOverride,
+    MetaTopic,
+)
 from idl2icd.parsing.idl_parser import ParsedFile, parse_idl_file
 
 
@@ -36,8 +37,8 @@ def build_ir(
         merged.types.update(parsed.types)
         merged.topic_hints.update(parsed.topic_hints)
 
-    qos_profiles: dict[str, dict] = {}
-    topic_meta: dict[str, dict] = {}
+    qos_profiles: dict[str, MetaQoSOverride] = {}
+    topic_meta: dict[str, MetaTopic] = {}
     for mp in metadata_paths:
         raw_text = Path(mp).read_text()
         try:
@@ -50,68 +51,78 @@ def build_ir(
         except ValidationError as exc:
             raise ValueError(f"Invalid metadata file '{mp}': {exc}") from exc
 
-        for name, prof in mf.qos_profiles.items():
-            qos_profiles[name] = prof.model_dump(exclude_none=True)
-        for fqn, t in mf.topics.items():
-            topic_meta[fqn] = t.model_dump(exclude_none=True)
-            merged.topic_hints.add(fqn)  # metadata can promote a struct to topic status
+        qos_profiles |= mf.qos_profiles
+        topic_meta |= mf.topics
+        # Metadata can promote a plain struct to topic status.
+        merged.topic_hints.update(mf.topics)
 
     ir = IRModel(project=project, types=merged.types)
 
     for fqn in sorted(merged.topic_hints):
         data_type = merged.types.get(fqn)
         if data_type is None or not isinstance(data_type, StructType):
-            diagnostics.append(Diagnostic(
-                rule="dangling-topic-ref", severity="error",
-                message=f"Metadata references topic '{fqn}' but no matching struct was found in parsed IDL.",
-            ))
+            diagnostics.append(
+                Diagnostic(
+                    rule="dangling-topic-ref",
+                    severity="error",
+                    message=(
+                        f"Metadata references topic '{fqn}' but no matching "
+                        f"struct was found in parsed IDL."
+                    ),
+                )
+            )
             continue
 
-        tmeta = topic_meta.get(fqn, {})
-        qos_dict = _resolve_qos(tmeta.get("qos"), qos_profiles)
-
+        tmeta = topic_meta.get(fqn)
         topic = Topic(
             fqn=fqn,
             data_type_fqn=fqn,
-            description=tmeta.get("description") or data_type.doc,
-            criticality=tmeta.get("criticality"),
-            rate=RateSpec(**tmeta["rate"]) if tmeta.get("rate") else None,
-            qos=qos_dict,
-            publishers=[Endpoint(**p) for p in tmeta.get("publishers", [])],
-            subscribers=[Endpoint(**s) for s in tmeta.get("subscribers", [])],
+            description=tmeta.description if tmeta and tmeta.description else data_type.doc,
+            criticality=tmeta.criticality if tmeta else None,
+            rate=tmeta.rate if tmeta else None,
+            qos=_resolve_qos(tmeta.qos if tmeta else None, qos_profiles),
+            publishers=list(tmeta.publishers) if tmeta else [],
+            subscribers=list(tmeta.subscribers) if tmeta else [],
         )
         ir.topics[fqn] = topic
 
-        # apply per-field metadata onto the struct's fields (in place)
-        field_meta = tmeta.get("fields", {})
+        # Apply per-field metadata onto the struct's fields (in place), so the
+        # merged IR is what renderers, rules, and snapshots see.
+        field_meta: dict[str, MetaField] = tmeta.fields if tmeta else {}
         for f in data_type.fields:
             fm = field_meta.get(f.name)
             if fm:
-                f.meta = f.meta.model_copy(update=fm)
+                f.meta = f.meta.model_copy(update=fm.model_dump(exclude_none=True))
 
     ir.diagnostics = diagnostics
     return ir
 
 
-def _resolve_qos(qos_meta: dict | None, qos_profiles: dict[str, dict]) -> ResolvedQoS:
-    base: dict = {}
-    if qos_meta:
-        profile_name = qos_meta.get("profile")
-        if profile_name and profile_name in qos_profiles:
-            base.update(qos_profiles[profile_name])
-        overrides = qos_meta.get("overrides") or {}
-        base.update({k: v for k, v in overrides.items() if v is not None})
+def _apply_qos_override(base: ResolvedQoS, override: MetaQoSOverride) -> ResolvedQoS:
+    """Overlay the non-None fields of a profile/overrides block onto a QoS value."""
+    updates: dict[str, object] = {}
+    for fname in ("reliability", "durability", "history", "deadline", "liveliness"):
+        value = getattr(override, fname)
+        if value is not None:
+            updates[fname] = value
+    return base.model_copy(update=updates)
 
-    kwargs = {}
-    for key in ("reliability", "durability"):
-        if key in base:
-            kwargs[key] = base[key]
 
-    for key, cls in (
-        ("history", QoSHistory),
-        ("deadline", QoSDeadline),
-        ("liveliness", QoSLiveliness),
-    ):
-        if base.get(key):
-            kwargs[key] = cls(**base[key])
-    return ResolvedQoS(**kwargs)
+def _resolve_qos(
+    qos_meta: MetaQoS | None,
+    qos_profiles: dict[str, MetaQoSOverride],
+) -> ResolvedQoS:
+    """Resolve a topic's QoS settings.
+
+    A named *profile* (if referenced and known) is applied first, then any
+    inline *overrides* block is layered on top of it. Unknown profile names
+    are silently ignored, matching the pre-existing behavior.
+    """
+    resolved = ResolvedQoS()
+    if qos_meta and qos_meta.profile:
+        profile = qos_profiles.get(qos_meta.profile)
+        if profile is not None:
+            resolved = _apply_qos_override(resolved, profile)
+    if qos_meta and qos_meta.overrides:
+        resolved = _apply_qos_override(resolved, qos_meta.overrides)
+    return resolved

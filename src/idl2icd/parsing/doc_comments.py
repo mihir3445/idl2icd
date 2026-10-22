@@ -4,6 +4,7 @@ part of the grammar (comments are %ignore'd for parsing), so we recover
 doc-comments in a separate text pass and look them up by line number after
 parsing, using Lark's token line metadata.
 """
+
 from __future__ import annotations
 
 import re
@@ -71,4 +72,4 @@ def _clean_block(raw: str) -> str:
         line = line.strip()
         line = re.sub(r"^\*\s?", "", line)
         cleaned_lines.append(line)
-    return "\n".join(l for l in cleaned_lines if l).strip()
+    return "\n".join(line for line in cleaned_lines if line).strip()

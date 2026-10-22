@@ -7,6 +7,7 @@ either (same limitation as PDF): the Mermaid source is included as a
 monospace text block with a note, until SVG/PNG pre-rendering via mmdc is
 wired in (see ROADMAP.md).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,7 +20,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 from idl2icd.diagrams.pubsub_graph import generate_pubsub_graph
 from idl2icd.model.ir import Diagnostic, IRModel
-from idl2icd.render.helpers import format_type_ref
+from idl2icd.render.helpers import struct_fields_context
 
 _CRIT_COLOR = {
     "safety": RGBColor(0xD1, 0x49, 0x5B),
@@ -42,7 +43,7 @@ def _shade_cell(cell, hex_color: str):
 def _set_col_widths(table, widths_cm: list[float]):
     table.autofit = False
     for row in table.rows:
-        for cell, w in zip(row.cells, widths_cm):
+        for cell, w in zip(row.cells, widths_cm, strict=True):
             cell.width = Cm(w)
 
 
@@ -119,8 +120,14 @@ def render_docx(
     doc.add_heading("Topic Index", level=1)
     all_topics = sorted(ir.topics.values(), key=lambda t: t.fqn)
     index_rows = [
-        [t.fqn, t.criticality or "-", t.qos.reliability, t.qos.durability,
-         str(len(t.publishers)), str(len(t.subscribers))]
+        [
+            t.fqn,
+            t.criticality or "-",
+            t.qos.reliability,
+            t.qos.durability,
+            str(len(t.publishers)),
+            str(len(t.subscribers)),
+        ]
         for t in all_topics
     ]
     _add_grid_table(
@@ -183,19 +190,25 @@ def render_docx(
         if topic.qos.deadline:
             qos_rows.append(("Deadline", f"{topic.qos.deadline.period_ms} ms"))
         if topic.rate:
-            qos_rows.append(("Rate", f"nominal {topic.rate.nominal_hz} Hz / max {topic.rate.max_hz} Hz"))
+            qos_rows.append(
+                ("Rate", f"nominal {topic.rate.nominal_hz} Hz / max {topic.rate.max_hz} Hz")
+            )
         _add_kv_table(doc, qos_rows)
 
         doc.add_heading("Publishers", level=2)
         _add_grid_table(
-            doc, headers=["Participant", "Instance count", "Source"],
-            rows=[[p.participant, p.instance_count or "", p.source or ""] for p in topic.publishers],
+            doc,
+            headers=["Participant", "Instance count", "Source"],
+            rows=[
+                [p.participant, p.instance_count or "", p.source or ""] for p in topic.publishers
+            ],
             widths=[5.0, 4.0, 5.0],
         )
 
         doc.add_heading("Subscribers", level=2)
         _add_grid_table(
-            doc, headers=["Participant", "Notes"],
+            doc,
+            headers=["Participant", "Notes"],
             rows=[[s.participant, s.notes or ""] for s in topic.subscribers],
             widths=[5.0, 9.0],
         )
@@ -204,14 +217,20 @@ def render_docx(
         doc.add_heading(f"Data Type: {topic.data_type_fqn}", level=2)
         if data_type and data_type.kind == "struct":
             field_rows = [
-                [f.name, format_type_ref(f.type_ref, ir), "yes" if f.is_key else "",
-                 f.meta.unit or "", f.meta.description or f.doc or ""]
-                for f in data_type.fields
+                [
+                    c["name"],
+                    c["type_ref_render"],
+                    "yes" if c["is_key"] else "",
+                    c["meta"].unit or "",
+                    c["meta"].description or c["doc"] or "",
+                ]
+                for c in struct_fields_context(data_type, ir)
             ]
         else:
             field_rows = []
         _add_grid_table(
-            doc, headers=["Field", "Type", "Key", "Unit", "Description"],
+            doc,
+            headers=["Field", "Type", "Key", "Unit", "Description"],
             rows=field_rows,
             widths=[3.0, 3.0, 1.2, 2.0, 6.8],
         )

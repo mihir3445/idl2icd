@@ -30,26 +30,51 @@ _TYPEDEF_ENUM_RE = re.compile(
 )
 
 PRIMITIVES = {
-    "boolean", "octet", "char", "wchar", "short", "unsigned",
-    "long", "float", "double", "int8", "uint8", "int16", "uint16",
-    "int32", "uint32", "int64", "uint64", "long double",
+    "boolean",
+    "octet",
+    "char",
+    "wchar",
+    "short",
+    "unsigned",
+    "long",
+    "float",
+    "double",
+    "int8",
+    "uint8",
+    "int16",
+    "uint16",
+    "int32",
+    "uint32",
+    "int64",
+    "uint64",
+    "long double",
 }
 
 # Maps the Lark alias node names produced by the `primitive_type` rule
 # (see idl_grammar.lark) to the canonical primitive name used in the IR.
 _PRIMITIVE_ALIAS_TO_NAME = {
-    "uint64_t": "uint64", "uint32_t": "uint32", "uint16_t": "uint16",
-    "int64_t": "int64", "int32_t": "int32", "int16_t": "int16",
-    "longdouble_t": "long double", "float_t": "float", "double_t": "double",
-    "bool_t": "boolean", "octet_t": "octet", "char_t": "char", "wchar_t": "wchar",
-    "int8_t": "int8", "uint8_t": "uint8",
+    "uint64_t": "uint64",
+    "uint32_t": "uint32",
+    "uint16_t": "uint16",
+    "int64_t": "int64",
+    "int32_t": "int32",
+    "int16_t": "int16",
+    "longdouble_t": "long double",
+    "float_t": "float",
+    "double_t": "double",
+    "bool_t": "boolean",
+    "octet_t": "octet",
+    "char_t": "char",
+    "wchar_t": "wchar",
+    "int8_t": "int8",
+    "uint8_t": "uint8",
 }
 
 
 @dataclass
 class ParsedFile:
-    types: dict[str, object] = field(default_factory=dict)  # fqn -> StructType/UnionType/EnumType
-    topic_hints: set[str] = field(default_factory=set)       # FQNs annotated @topic
+    types: dict[str, AnyType] = field(default_factory=dict)  # fqn -> StructType/UnionType/EnumType
+    topic_hints: set[str] = field(default_factory=set)  # FQNs annotated @topic
 
 
 def parse_idl_file(path: str | Path, include_dirs: list[Path] | None = None) -> ParsedFile:
@@ -116,7 +141,9 @@ def _visible(active_stack: list[dict[str, bool]]) -> bool:
     return all(ctx["branch_visible"] for ctx in active_stack)
 
 
-def _resolve_include_file(include_name: str, current_dir: Path, include_dirs: list[Path]) -> Path | None:
+def _resolve_include_file(
+    include_name: str, current_dir: Path, include_dirs: list[Path]
+) -> Path | None:
     include_path = Path(include_name)
     if include_path.is_absolute():
         candidates = [include_path]
@@ -171,22 +198,26 @@ def _preprocess_source_text(
             name = remainder.split()[0] if remainder else ""
             parent_visible = _visible(active_stack)
             condition_true = name in defined_macros
-            active_stack.append({
-                "parent_visible": parent_visible,
-                "condition_true": condition_true,
-                "branch_visible": parent_visible and condition_true,
-            })
+            active_stack.append(
+                {
+                    "parent_visible": parent_visible,
+                    "condition_true": condition_true,
+                    "branch_visible": parent_visible and condition_true,
+                }
+            )
             continue
 
         if directive == "ifndef":
             name = remainder.split()[0] if remainder else ""
             parent_visible = _visible(active_stack)
             condition_true = name not in defined_macros
-            active_stack.append({
-                "parent_visible": parent_visible,
-                "condition_true": condition_true,
-                "branch_visible": parent_visible and condition_true,
-            })
+            active_stack.append(
+                {
+                    "parent_visible": parent_visible,
+                    "condition_true": condition_true,
+                    "branch_visible": parent_visible and condition_true,
+                }
+            )
             continue
 
         if directive == "else":
@@ -212,13 +243,15 @@ def _preprocess_source_text(
                 if include_path is not None and include_path.resolve() not in seen:
                     seen.add(include_path.resolve())
                     included_text = _rewrite_typedef_enum(include_path.read_text())
-                    out.append(_preprocess_source_text(
-                        included_text,
-                        include_path.parent,
-                        defined_macros=defined_macros,
-                        seen=seen,
-                        include_dirs=include_dirs,
-                    ))
+                    out.append(
+                        _preprocess_source_text(
+                            included_text,
+                            include_path.parent,
+                            defined_macros=defined_macros,
+                            seen=seen,
+                            include_dirs=include_dirs,
+                        )
+                    )
             continue
 
         # Unknown directives are treated as a no-op. This keeps the parser
@@ -255,13 +288,17 @@ def _walk(tree: Tree, scope: list[str], filename: str, doc_index, out: ParsedFil
             continue
         if node.data == "module_def":
             ident = next(c for c in node.children if isinstance(c, Token) and c.type == "IDENT")
-            inner_defs = [c for c in node.children if isinstance(c, Tree) and c.data == "definition"]
+            inner_defs = [
+                c for c in node.children if isinstance(c, Tree) and c.data == "definition"
+            ]
             _walk_definitions(inner_defs, [*scope, ident.value], filename, doc_index, out)
         elif node.data == "definition":
             _walk_definitions([node], scope, filename, doc_index, out)
 
 
-def _walk_definitions(defs: list[Tree], scope: list[str], filename: str, doc_index, out: ParsedFile):
+def _walk_definitions(
+    defs: list[Tree], scope: list[str], filename: str, doc_index, out: ParsedFile
+):
     for d in defs:
         inner = d.children[0]
         if inner.data == "module_def":
@@ -300,7 +337,9 @@ def _resolve_type_ref(type_ref: TypeRef, scope: list[str], types: dict[str, AnyT
         return TypeRef(kind="sequence", name="sequence", element=element, bound=type_ref.bound)
     if type_ref.kind == "array":
         element = _resolve_type_ref(type_ref.element, scope, types) if type_ref.element else None
-        return TypeRef(kind="array", name=type_ref.name, element=element, array_dims=type_ref.array_dims)
+        return TypeRef(
+            kind="array", name=type_ref.name, element=element, array_dims=type_ref.array_dims
+        )
     if type_ref.kind != "named":
         return type_ref.model_copy(deep=True)
 
@@ -387,15 +426,22 @@ def _handle_struct(node: Tree, scope, filename, doc_index, out: ParsedFile):
                 dims = [_const_expr_to_int(c) for c in array_node.children]
             tr = type_ref
             if dims:
-                tr = TypeRef(kind="array", name=type_ref.render(), element=type_ref, array_dims=[d for d in dims if d])
-            fields.append(Field_(
-                name=fname,
-                type_ref=tr,
-                is_key=is_key,
-                optional=optional,
-                doc=_doc_for(m, doc_index),
-                source_span=SourceSpan(file=filename, line=_line_of(m)),
-            ))
+                tr = TypeRef(
+                    kind="array",
+                    name=type_ref.render(),
+                    element=type_ref,
+                    array_dims=[d for d in dims if d],
+                )
+            fields.append(
+                Field_(
+                    name=fname,
+                    type_ref=tr,
+                    is_key=is_key,
+                    optional=optional,
+                    doc=_doc_for(m, doc_index),
+                    source_span=SourceSpan(file=filename, line=_line_of(m)),
+                )
+            )
 
     struct = StructType(
         fqn=fqn,
@@ -412,16 +458,27 @@ def _handle_struct(node: Tree, scope, filename, doc_index, out: ParsedFile):
 def _handle_union(node: Tree, scope, filename, doc_index, out: ParsedFile):
     ident = next(c for c in node.children if isinstance(c, Token) and c.type == "IDENT")
     fqn = _fqn(scope, ident.value)
-    type_specs = [c for c in node.children if isinstance(c, Tree) and c.data in
-                  ("named_type", "string_type", "wstring_type", "seq_type", "prim_type")]
+    type_specs = [
+        c
+        for c in node.children
+        if isinstance(c, Tree)
+        and c.data in ("named_type", "string_type", "wstring_type", "seq_type", "prim_type")
+    ]
     discriminator = _type_spec_to_ref(type_specs[0])
-    case_nodes = [c for c in node.children if isinstance(c, Tree) and c.data in ("case_labelled", "case_default")]
+    case_nodes = [
+        c
+        for c in node.children
+        if isinstance(c, Tree) and c.data in ("case_labelled", "case_default")
+    ]
 
     cases: list[UnionCase] = []
     for c in case_nodes:
         if c.data == "case_labelled":
-            label_exprs = [ch for ch in c.children if isinstance(ch, Tree) and ch.data in
-                           ("num_expr", "str_expr", "ref_expr")]
+            label_exprs = [
+                ch
+                for ch in c.children
+                if isinstance(ch, Tree) and ch.data in ("num_expr", "str_expr", "ref_expr")
+            ]
             rest = [ch for ch in c.children if ch not in label_exprs]
             labels = [_const_expr_to_str(le) for le in label_exprs]
         else:
@@ -431,10 +488,16 @@ def _handle_union(node: Tree, scope, filename, doc_index, out: ParsedFile):
         decl = rest[1]
         type_ref = _type_spec_to_ref(type_spec)
         fname = decl.children[0].value
-        cases.append(UnionCase(labels=labels, field=Field_(
-            name=fname, type_ref=type_ref,
-            source_span=SourceSpan(file=filename, line=_line_of(c)),
-        )))
+        cases.append(
+            UnionCase(
+                labels=labels,
+                field=Field_(
+                    name=fname,
+                    type_ref=type_ref,
+                    source_span=SourceSpan(file=filename, line=_line_of(c)),
+                ),
+            )
+        )
 
     union = UnionType(
         fqn=fqn,

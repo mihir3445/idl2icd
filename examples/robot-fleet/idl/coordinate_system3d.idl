@@ -1,0 +1,23 @@
+#ifndef COORDINATE_SYSTEM_GUARD
+#define COORDINATE_SYSTEM_GUARD
+
+#include "common_types.idl"
+
+#include "utm_coordinate3d.idl"
+
+enum CoordinateType
+{
+    UTM = 0,
+    MGRS = 1,
+};
+
+union CoordinateSystem3d switch(CoordinateType)
+{
+    case UTM:
+         UtmCoordinate3d utm_coordinate;
+
+    case MGRS:
+         MgrsCoordinate3d mgrs_coordinate;
+};
+
+#endif // COORDINATE_SYSTEM_GUARD

@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 
-import idl2icd.validation.rules.builtin  # noqa: F401
 from idl2icd.config import load_config
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
@@ -125,7 +124,9 @@ def test_nested_include_paths_are_resolved_from_base_dir(tmp_path):
     shared.write_text("module Shared { struct Common { long value; }; };\n")
 
     top = nested_dir / "top.idl"
-    top.write_text("#include \"../common.idl\"\nmodule M { struct Foo { Shared::Common value; }; };\n")
+    top.write_text(
+        '#include "../common.idl"\nmodule M { struct Foo { Shared::Common value; }; };\n'
+    )
 
     project = ProjectMeta(name="t", version="0.0.1")
     ir = build_ir([top], [], project, include_dirs=[include_root])

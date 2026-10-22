@@ -1,22 +1,48 @@
 from __future__ import annotations
 
-from idl2icd.model.ir import Diagnostic, IRModel
+from idl2icd.model.ir import Diagnostic, IRModel, TypeRef
 from idl2icd.validation.engine import register_rule
+
+_NUMERIC_PRIMITIVES = frozenset(
+    {
+        "float",
+        "double",
+        "short",
+        "long",
+        "unsigned",
+        "int8",
+        "uint8",
+        "int16",
+        "uint16",
+        "int32",
+        "uint32",
+        "int64",
+        "uint64",
+        "octet",
+    }
+)
+
+
+def _is_numeric_type(type_ref: TypeRef) -> bool:
+    """True for numeric primitives and for containers of numerics
+    (`sequence<double>`, `float[4]`, ...), so nested numerics are checked too."""
+    if type_ref.kind == "primitive":
+        return type_ref.name in _NUMERIC_PRIMITIVES
+    if type_ref.kind in ("sequence", "array") and type_ref.element is not None:
+        return _is_numeric_type(type_ref.element)
+    return False
 
 
 @register_rule("missing-units", default_severity="warn")
 def check_missing_units(ir: IRModel):
-    numeric_primitives = {
-        "float", "double", "short", "long", "unsigned", "int8", "uint8",
-        "int16", "uint16", "int32", "uint32", "int64", "uint64", "octet",
-    }
     for t in ir.types.values():
         if t.kind != "struct":
             continue
         for f in t.fields:
-            if f.type_ref.name in numeric_primitives and not f.meta.unit:
+            if _is_numeric_type(f.type_ref) and not f.meta.unit:
                 yield Diagnostic(
-                    rule="missing-units", severity="warn",
+                    rule="missing-units",
+                    severity="warn",
                     message=f"Field '{t.fqn}.{f.name}' is numeric but has no documented unit.",
                     location=f.source_span,
                 )
@@ -27,7 +53,8 @@ def check_missing_owner(ir: IRModel):
     for topic in ir.topics.values():
         if not topic.publishers:
             yield Diagnostic(
-                rule="missing-owner", severity="warn",
+                rule="missing-owner",
+                severity="warn",
                 message=f"Topic '{topic.fqn}' has no declared publisher.",
             )
 
@@ -37,7 +64,8 @@ def check_undocumented_topic(ir: IRModel):
     for topic in ir.topics.values():
         if not topic.description:
             yield Diagnostic(
-                rule="undocumented-topic", severity="info",
+                rule="undocumented-topic",
+                severity="info",
                 message=f"Topic '{topic.fqn}' has no description.",
             )
 
@@ -54,7 +82,8 @@ def check_qos_compatibility(ir: IRModel):
     for topic in ir.topics.values():
         if topic.criticality in ("high", "safety") and topic.qos.reliability == "BEST_EFFORT":
             yield Diagnostic(
-                rule="qos-compatibility", severity="error",
+                rule="qos-compatibility",
+                severity="error",
                 message=(
                     f"Topic '{topic.fqn}' is marked criticality='{topic.criticality}' "
                     f"but uses BEST_EFFORT reliability."

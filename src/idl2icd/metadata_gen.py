@@ -8,6 +8,7 @@ publishers, subscribers, and field-level metadata that a human can fill in.
 Usage:
     idl2icd metadata generate --config idl2icd.yaml
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -82,9 +83,7 @@ def _generate_yaml_for_idl(
 
     # Determine which FQNs to generate entries for.
     if all_structs:
-        candidates = sorted(
-            fqn for fqn, t in parsed.types.items() if isinstance(t, StructType)
-        )
+        candidates = sorted(fqn for fqn, t in parsed.types.items() if isinstance(t, StructType))
     else:
         candidates = sorted(parsed.topic_hints)
 

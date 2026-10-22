@@ -16,9 +16,6 @@
   template (cover page, topic index, per-topic sections, page numbers).
 - **Word/.docx export** via `python-docx`, schema-validated and visually
   verified via LibreOffice → PDF → page images.
-- **Plugin system** via `pluggy`: hookspecs for validation rules, diagram
-  generators, renderers, and IR-enrichment (`on_ir_built`); `idl2icd plugins
-  list` shows discovered plugins.
 - **Snapshot + change-report engine**: `idl2icd snapshot save` / `idl2icd
   diff --against <snapshot>` — semantic diff (breaking / additive /
   informational) keyed by FQN.
@@ -29,7 +26,7 @@
   just checking the schema parses. `examples/robot-fleet/.vscode/settings.json`
   wires this up for VS Code's YAML extension out of the box.
 - CLI: `validate`, `build --format site|pdf|docx|all`, `diff`,
-  `snapshot save`, `plugins list`, `metadata generate`, `doctor`.
+  `snapshot save`, `metadata generate`, `doctor`.
 - **`LICENSE`** (Apache-2.0, matching what `pyproject.toml` already declared
   — this was missing before and is a real gap for a public GitHub repo).
 - **`CONTRIBUTING.md`** — dev setup, where each extension point lives, and
@@ -73,10 +70,6 @@
   bitmask/bitset, forward declarations).
 - **`idl2icd init`** scaffolding command and **`idl2icd serve`** live-reload
   dev server (both still design-only).
-- **Example third-party plugins** (e.g. a Confluence exporter, a live DDS
-  domain-introspection enricher) to prove out the plugin API end-to-end
-  from outside the core package — the API is currently only exercised by
-  the in-tree `CorePlugin`.
 
 ## Suggested next session
 
@@ -84,6 +77,3 @@
    this needs to run in an environment with real internet access to verify.
 2. Build a real per-subscriber RxO compatibility check + rendered QoS
    matrix page (site, PDF, and docx), replacing the current heuristic.
-3. Write one real example plugin package (e.g. a Confluence or Markdown
-   exporter) living outside `src/idl2icd/`, registered via an entry point,
-   to validate the plugin API isn't just internally self-consistent.

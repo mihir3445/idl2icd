@@ -3,11 +3,18 @@ renderers, diagram generators, validation rules, and the change-report
 engine are allowed to depend on. IDL parsing and metadata merging both
 produce this; nothing downstream re-reads source files.
 """
+
 from __future__ import annotations
 
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# Shared Literal aliases: each encoded constraint is spelled out in exactly
+# one place and reused by the IR, the metadata schema, and the snapshot diff.
+Reliability = Literal["BEST_EFFORT", "RELIABLE"]
+Durability = Literal["VOLATILE", "TRANSIENT_LOCAL", "TRANSIENT", "PERSISTENT"]
+Criticality = Literal["low", "medium", "high", "safety"]
 
 
 class SourceSpan(BaseModel):
@@ -18,9 +25,10 @@ class SourceSpan(BaseModel):
 class TypeRef(BaseModel):
     """A resolved reference to a type: either a primitive, a bounded
     string/sequence, or a named user type (FQN)."""
+
     kind: Literal["primitive", "string", "sequence", "named", "array"]
     name: str  # primitive name, "string", "sequence", or the FQN for named
-    bound: int | None = None          # string/sequence bound, if any
+    bound: int | None = None  # string/sequence bound, if any
     element: TypeRef | None = None  # element type for sequence/array
     array_dims: list[int] = Field(default_factory=list)
 
@@ -46,6 +54,7 @@ TypeRef.model_rebuild()
 
 class FieldMeta(BaseModel):
     """Metadata that can be attached to a field from the metadata YAML."""
+
     unit: str | None = None
     range: list[float] | None = None
     precision: float | None = None
@@ -116,8 +125,8 @@ class QoSLiveliness(BaseModel):
 
 
 class ResolvedQoS(BaseModel):
-    reliability: Literal["BEST_EFFORT", "RELIABLE"] = "BEST_EFFORT"
-    durability: Literal["VOLATILE", "TRANSIENT_LOCAL", "TRANSIENT", "PERSISTENT"] = "VOLATILE"
+    reliability: Reliability = "BEST_EFFORT"
+    durability: Durability = "VOLATILE"
     history: QoSHistory = Field(default_factory=QoSHistory)
     deadline: QoSDeadline | None = None
     liveliness: QoSLiveliness | None = None
@@ -134,7 +143,7 @@ class Topic(BaseModel):
     fqn: str
     data_type_fqn: str
     description: str | None = None
-    criticality: Literal["low", "medium", "high", "safety"] | None = None
+    criticality: Criticality | None = None
     rate: RateSpec | None = None
     qos: ResolvedQoS = Field(default_factory=ResolvedQoS)
     publishers: list[Endpoint] = Field(default_factory=list)

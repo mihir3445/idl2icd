@@ -2,21 +2,22 @@
 diff between two snapshots keyed by fully-qualified name (FQN) — never a
 raw file diff, so renames/reordering/comment-only edits don't create noise.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from idl2icd.model.ir import IRModel, StructType, Topic
+from idl2icd.model.ir import Durability, IRModel, StructType, Topic
 
 ChangeClass = Literal["breaking", "additive", "informational"]
 
 
 @dataclass
 class Change:
-    entity: str            # FQN of the topic/type/field affected
-    kind: str               # short machine tag, e.g. "field-type-changed"
+    entity: str  # FQN of the topic/type/field affected
+    kind: str  # short machine tag, e.g. "field-type-changed"
     change_class: ChangeClass
     detail: str
 
@@ -68,7 +69,9 @@ def load_snapshot(path: str | Path) -> IRModel:
     return IRModel.model_validate_json(Path(path).read_text())
 
 
-def _add(changes: list[Change], entity: str, kind: str, change_class: ChangeClass, detail: str) -> None:
+def _add(
+    changes: list[Change], entity: str, kind: str, change_class: ChangeClass, detail: str
+) -> None:
     changes.append(Change(entity=entity, kind=kind, change_class=change_class, detail=detail))
 
 
@@ -79,7 +82,13 @@ def diff_ir(old: IRModel, new: IRModel) -> ChangeReport:
 
     for fqn in sorted(set(old_t) - set(new_t)):
         subs = ", ".join(s.participant for s in old_t[fqn].subscribers) or "none"
-        _add(report.changes, fqn, "topic-removed", "breaking", f"topic removed (had subscribers: {subs})")
+        _add(
+            report.changes,
+            fqn,
+            "topic-removed",
+            "breaking",
+            f"topic removed (had subscribers: {subs})",
+        )
     for fqn in sorted(set(new_t) - set(old_t)):
         _add(report.changes, fqn, "topic-added", "additive", "new topic")
     for fqn in sorted(set(old_t) & set(new_t)):
@@ -92,7 +101,13 @@ def diff_ir(old: IRModel, new: IRModel) -> ChangeReport:
     for fqn in sorted(set(old_ty) & set(new_ty)):
         ot, nt = old_ty[fqn], new_ty[fqn]
         if ot.kind != nt.kind:
-            _add(report.changes, fqn, "type-kind-changed", "breaking", f"type kind changed: {ot.kind} → {nt.kind}")
+            _add(
+                report.changes,
+                fqn,
+                "type-kind-changed",
+                "breaking",
+                f"type kind changed: {ot.kind} → {nt.kind}",
+            )
         elif ot.kind == nt.kind == "struct":
             report.changes.extend(_diff_struct_fields(fqn, ot, nt))
 
@@ -106,11 +121,24 @@ def _diff_topic(fqn: str, old: Topic, new: Topic) -> list[Change]:
         _add(changes, fqn, kind, change_class, detail)
 
     if old.data_type_fqn != new.data_type_fqn:
-        add("topic-data-type-changed", "breaking", f"topic data type changed: {old.data_type_fqn} → {new.data_type_fqn}")
+        add(
+            "topic-data-type-changed",
+            "breaking",
+            f"topic data type changed: {old.data_type_fqn} → {new.data_type_fqn}",
+        )
 
-    durability_rank = {"VOLATILE": 0, "TRANSIENT_LOCAL": 1, "TRANSIENT": 2, "PERSISTENT": 3}
+    durability_rank: dict[Durability, int] = {
+        "VOLATILE": 0,
+        "TRANSIENT_LOCAL": 1,
+        "TRANSIENT": 2,
+        "PERSISTENT": 3,
+    }
     if durability_rank[new.qos.durability] < durability_rank[old.qos.durability]:
-        add("qos-durability-weakened", "breaking", f"durability weakened: {old.qos.durability} → {new.qos.durability}")
+        add(
+            "qos-durability-weakened",
+            "breaking",
+            f"durability weakened: {old.qos.durability} → {new.qos.durability}",
+        )
     if old.qos.reliability == "RELIABLE" and new.qos.reliability == "BEST_EFFORT":
         add("qos-reliability-weakened", "breaking", "reliability weakened: RELIABLE → BEST_EFFORT")
 
@@ -126,11 +154,17 @@ def _diff_topic(fqn: str, old: Topic, new: Topic) -> list[Change]:
     for removed in sorted(old_pubs - new_pubs):
         kind = "publisher-removed-no-owner" if not new_pubs else "publisher-removed"
         cls = "breaking" if not new_pubs else "informational"
-        detail = f"publisher '{removed}' removed" + (" and no publisher remains" if not new_pubs else "")
+        detail = f"publisher '{removed}' removed" + (
+            " and no publisher remains" if not new_pubs else ""
+        )
         add(kind, cls, detail)
 
     if old.criticality != new.criticality:
-        add("criticality-changed", "informational", f"criticality changed: {old.criticality} → {new.criticality}")
+        add(
+            "criticality-changed",
+            "informational",
+            f"criticality changed: {old.criticality} → {new.criticality}",
+        )
     if old.description != new.description:
         add("description-changed", "informational", "description updated")
 
@@ -150,16 +184,33 @@ def _diff_struct_fields(fqn: str, old: StructType, new: StructType) -> list[Chan
         add(f"{fqn}.{name}", "field-removed", "breaking", "field removed")
     for name in sorted(set(new_fields) - set(old_fields)):
         cls = "additive" if new_fields[name].optional else "breaking"
-        note = "new optional field" if new_fields[name].optional else "new REQUIRED field (breaking for existing readers)"
+        note = (
+            "new optional field"
+            if new_fields[name].optional
+            else "new REQUIRED field (breaking for existing readers)"
+        )
         add(f"{fqn}.{name}", "field-added", cls, note)
     for name in sorted(set(old_fields) & set(new_fields)):
         of, nf = old_fields[name], new_fields[name]
         if of.type_ref.render() != nf.type_ref.render():
-            add(f"{fqn}.{name}", "field-type-changed", "breaking",
-                f"type changed `{of.type_ref.render()}` → `{nf.type_ref.render()}`")
+            add(
+                f"{fqn}.{name}",
+                "field-type-changed",
+                "breaking",
+                f"type changed `{of.type_ref.render()}` → `{nf.type_ref.render()}`",
+            )
         if of.is_key != nf.is_key:
-            add(f"{fqn}.{name}", "key-status-changed", "breaking", f"@key changed: {of.is_key} → {nf.is_key}")
+            add(
+                f"{fqn}.{name}",
+                "key-status-changed",
+                "breaking",
+                f"@key changed: {of.is_key} → {nf.is_key}",
+            )
         if of.meta.unit != nf.meta.unit:
-            add(f"{fqn}.{name}", "unit-changed", "informational",
-                f"unit changed: {of.meta.unit} → {nf.meta.unit}")
+            add(
+                f"{fqn}.{name}",
+                "unit-changed",
+                "informational",
+                f"unit changed: {of.meta.unit} → {nf.meta.unit}",
+            )
     return changes

@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import jsonschema
@@ -20,6 +19,7 @@ def test_generated_metadata_schema_rejects_unknown_keys():
     schema = MetadataFile.model_json_schema()
     bad = {"topics": {"Foo": {"not_a_real_field": 123}}}
     import pytest
+
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(bad, schema)
 

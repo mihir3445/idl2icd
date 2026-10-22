@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from idl2icd.model.ir import (
+    Criticality,
+    Durability,
     Endpoint,
     FieldMeta,
     QoSDeadline,
     QoSHistory,
     QoSLiveliness,
     RateSpec,
+    Reliability,
 )
 
 
@@ -28,8 +29,8 @@ class MetaEndpoint(Endpoint):
 
 class MetaQoSOverride(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    reliability: Literal["BEST_EFFORT", "RELIABLE"] | None = None
-    durability: Literal["VOLATILE", "TRANSIENT_LOCAL", "TRANSIENT", "PERSISTENT"] | None = None
+    reliability: Reliability | None = None
+    durability: Durability | None = None
     history: QoSHistory | None = None
     deadline: QoSDeadline | None = None
     liveliness: QoSLiveliness | None = None
@@ -44,7 +45,7 @@ class MetaQoS(BaseModel):
 class MetaTopic(BaseModel):
     model_config = ConfigDict(extra="forbid")
     description: str | None = None
-    criticality: Literal["low", "medium", "high", "safety"] | None = None
+    criticality: Criticality | None = None
     rate: MetaRate | None = None
     qos: MetaQoS | None = None
     publishers: list[MetaEndpoint] = Field(default_factory=list)

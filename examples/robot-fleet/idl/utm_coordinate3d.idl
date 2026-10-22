@@ -1,0 +1,14 @@
+#ifndef UTM_COORDINATE_3D_GUARD
+#define UTM_COORDINATE_3D_GUARD
+
+#include "UtmCoordinate2d.idl"
+#include "common_types.idl"
+
+@nested
+struct UtmCoordinate3d : UtmCoordinate2d
+{
+    Robot::Telemetry::SensorState state;
+    double height_m;
+};
+
+#endif // UTM_COORDINATE_3D_GUARD

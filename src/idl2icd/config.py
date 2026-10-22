@@ -45,14 +45,21 @@ class ProjectConfig(BaseModel):
 
     _base_dir: Path = PrivateAttr(default=None)
 
+    @property
+    def base_dir(self) -> Path:
+        """Directory the config file lives in (all relative paths are resolved
+        against it). Falls back to the current working directory for configs
+        constructed in code without going through `load_config()`."""
+        return self._base_dir or Path(".")
+
     def resolve_idl_paths(self) -> list[Path]:
-        return _glob_all(self._base_dir, self.sources.idl)
+        return _glob_all(self.base_dir, self.sources.idl)
 
     def resolve_metadata_paths(self) -> list[Path]:
-        return _glob_all(self._base_dir, self.sources.metadata)
+        return _glob_all(self.base_dir, self.sources.metadata)
 
     def resolve_include_paths(self) -> list[Path]:
-        return _glob_all(self._base_dir, self.sources.include_paths)
+        return _glob_all(self.base_dir, self.sources.include_paths)
 
 
 def _glob_all(base: Path, patterns: list[str]) -> list[Path]:

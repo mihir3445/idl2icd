@@ -1,0 +1,9 @@
+#pragma once
+
+module robot_fleet {
+  struct UtmCoordinate2d {
+    long zone;
+    double easting;
+    double northing;
+  };
+};

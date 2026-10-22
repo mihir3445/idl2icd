@@ -89,6 +89,5 @@ topics:
     # The graph lives on the site-root page, so topic links must be relative to
     # the root ("topics/<fqn>.html") and NOT jump outside the site ("../topics/...").
     # (&#34; is Jinja's HTML-escaped quote; mermaid decodes it back to '"'.)
-    assert 'click n_X__Y__Body &#34;topics/X.Y.Body.html&#34;' in index_html
+    assert "click n_X__Y__Body &#34;topics/X.Y.Body.html&#34;" in index_html
     assert "../topics/" not in index_html
-

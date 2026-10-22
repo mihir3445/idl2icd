@@ -8,11 +8,12 @@ _RULES: dict[str, Callable[[IRModel], Iterator[Diagnostic]]] = {}
 _DEFAULT_SEVERITY: dict[str, str] = {}
 
 
-def register_rule(id: str, default_severity: str = "warn"):
+def register_rule(rule_id: str, default_severity: str = "warn"):
     def deco(fn):
-        _RULES[id] = fn
-        _DEFAULT_SEVERITY[id] = default_severity
+        _RULES[rule_id] = fn
+        _DEFAULT_SEVERITY[rule_id] = default_severity
         return fn
+
     return deco
 
 

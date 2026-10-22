@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from markupsafe import Markup, escape
 
 from idl2icd.model.ir import IRModel, StructType, TypeRef
+
+# The `themes/` directory lives at the repository root, next to `src/`. From
+# this module (src/idl2icd/render/helpers.py) that is four `parent` hops up:
+# render -> idl2icd -> src -> repo root.
+THEME_DIR = Path(__file__).resolve().parents[3] / "themes" / "default"
+
+
+def fqn_to_filename(fqn: str) -> str:
+    """Convert a fully-qualified name to the HTML filename used for its page
+    (e.g. `Robot::Telemetry::BatteryStatus` -> `Robot.Telemetry.BatteryStatus.html`)."""
+    return fqn.replace("::", ".") + ".html"
 
 
 def _render_named_type_link(type_ref: TypeRef, ir: IRModel, *, rendered: str) -> Markup:
@@ -10,7 +23,7 @@ def _render_named_type_link(type_ref: TypeRef, ir: IRModel, *, rendered: str) ->
     if target is None:
         return Markup(f"<code>{escape(rendered)}</code>")
 
-    href = escape(f"../types/{target.fqn.replace('::', '.')}.html")
+    href = escape(f"../types/{fqn_to_filename(target.fqn)}")
     return Markup(f'<a href="{href}"><code>{escape(rendered)}</code></a>')
 
 

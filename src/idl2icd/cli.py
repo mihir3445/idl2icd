@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -11,7 +12,6 @@ from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
-import idl2icd.validation.rules.builtin  # noqa: F401  (registers built-in rules)
 from idl2icd.config import load_config
 from idl2icd.metadata_gen import generate_metadata_for_idl
 from idl2icd.model.ir import ProjectMeta
@@ -19,6 +19,9 @@ from idl2icd.model.merge import build_ir
 from idl2icd.render.site.renderer import render_site
 from idl2icd.snapshot import diff_ir, load_snapshot, save_snapshot
 from idl2icd.validation.engine import SEVERITY_RANK, run_rules, worst_severity
+
+_VALID_FORMATS = frozenset({"site", "pdf", "docx", "all"})
+_VALID_OUTPUT_FORMATS = frozenset({"text", "markdown"})
 
 app = typer.Typer(help="idl2icd: generate an Interface Control Document from OMG IDL + metadata.")
 snapshot_app = typer.Typer(help="Manage frozen IR snapshots used for change reports.")
@@ -54,13 +57,8 @@ def _pdf_unavailable_message(exc: Exception) -> str:
     Homebrew's lib directory isn't on the dynamic linker's default search
     path. Give a targeted hint for each case instead of a raw traceback.
     """
-    import platform
-
     if isinstance(exc, ImportError):
-        return (
-            "PDF export requires the optional 'pdf' extra:\n"
-            "  pip install 'idl2icd[pdf]'"
-        )
+        return "PDF export requires the optional 'pdf' extra:\n  pip install 'idl2icd[pdf]'"
 
     # OSError from a failed dlopen of libgobject/libpango/libcairo etc.
     if platform.system() == "Darwin":
@@ -70,9 +68,9 @@ def _pdf_unavailable_message(exc: Exception) -> str:
             "linker's default search path. Fix:\n"
             "  brew install pango gdk-pixbuf libffi\n"
             "  # Apple Silicon:\n"
-            "  export DYLD_FALLBACK_LIBRARY_PATH=\"/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH\"\n"
+            '  export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_FALLBACK_LIBRARY_PATH"\n'
             "  # Intel Mac:\n"
-            "  export DYLD_FALLBACK_LIBRARY_PATH=\"/usr/local/lib:$DYLD_FALLBACK_LIBRARY_PATH\"\n"
+            '  export DYLD_FALLBACK_LIBRARY_PATH="/usr/local/lib:$DYLD_FALLBACK_LIBRARY_PATH"\n'
             "Add the export line to your ~/.zshrc, open a new terminal, then retry."
         )
     return (
@@ -119,7 +117,7 @@ def _build_ir_and_diagnostics(config_path: str):
         ir = build_ir(idl_paths, metadata_paths, project, include_dirs=include_dirs)
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     diagnostics = run_rules(ir, severities=cfg.validation.rules)
     return cfg, ir, diagnostics
@@ -154,7 +152,8 @@ def validate(config: str = typer.Option("idl2icd.yaml", "--config", "-c")):
     _exit_if_validation_failed(
         worst,
         cfg.validation.fail_on,
-        f"Validation failed: worst severity '{worst}' >= fail_on threshold '{cfg.validation.fail_on}'",
+        f"Validation failed: worst severity '{worst}' >= "
+        f"fail_on threshold '{cfg.validation.fail_on}'",
     )
     console.print("[green]Validation passed.[/green]")
 
@@ -162,16 +161,31 @@ def validate(config: str = typer.Option("idl2icd.yaml", "--config", "-c")):
 @app.command()
 def build(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
-    format: str = typer.Option("site", "--format", help="site | pdf | docx | all"),
-    open_output: bool = typer.Option(False, "--open", help="Open the generated output using the platform default application"),
+    output_format: str = typer.Option(
+        "site",
+        "--format",
+        "--output-format",
+        help="site | pdf | docx | all (case-insensitive)",
+    ),
+    open_output: bool = typer.Option(
+        False, "--open", help="Open the generated output using the platform default application"
+    ),
 ):
     """Full pipeline: parse -> validate -> render site, PDF, and/or docx."""
+    fmt = output_format.lower()
+    if fmt not in _VALID_FORMATS:
+        console.print(
+            f"[red]Unknown --format '{output_format}'. "
+            f"Valid values: {', '.join(sorted(_VALID_FORMATS))}.[/red]"
+        )
+        raise typer.Exit(code=1)
+
     cfg, ir, diagnostics = _build_ir_and_diagnostics(config)
     _print_diagnostics(diagnostics)
-    base_dir = Path(cfg._base_dir)
+    base_dir = cfg.base_dir
 
     out_dir = base_dir / cfg.output.site_dir
-    if format in ("site", "all"):
+    if fmt in ("site", "all"):
         render_site(
             ir,
             diagnostics,
@@ -184,8 +198,9 @@ def build(
         if open_output:
             _maybe_open(out_dir / "index.html")
 
-    if format in ("pdf", "all"):
+    if fmt in ("pdf", "all"):
         from idl2icd.render.pdf.renderer import render_pdf
+
         pdf_path = base_dir / cfg.output.pdf_path
         try:
             render_pdf(
@@ -202,8 +217,9 @@ def build(
         except (ImportError, OSError) as exc:
             console.print(f"[yellow]{escape(_pdf_unavailable_message(exc))}[/yellow]")
 
-    if format in ("docx", "all"):
+    if fmt in ("docx", "all"):
         from idl2icd.render.docx.renderer import render_docx
+
         docx_path = base_dir / cfg.output.docx_path
         try:
             render_docx(
@@ -232,21 +248,33 @@ def build(
 @app.command()
 def diff(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
-    against: str = typer.Option(..., "--against", help="Path to a previously saved snapshot JSON file"),
+    against: str = typer.Option(
+        ..., "--against", help="Path to a previously saved snapshot JSON file"
+    ),
     output_format: str = typer.Option("text", "--output-format", help="text | markdown"),
 ):
     """Show a semantic change report between the current build and a saved snapshot."""
+    fmt = output_format.lower()
+    if fmt not in _VALID_OUTPUT_FORMATS:
+        console.print(
+            f"[red]Unknown --output-format '{output_format}'. "
+            f"Valid values: {', '.join(sorted(_VALID_OUTPUT_FORMATS))}.[/red]"
+        )
+        raise typer.Exit(code=1)
+
     _, ir, _ = _build_ir_and_diagnostics(config)
     old_ir = load_snapshot(against)
     report = diff_ir(old_ir, ir)
 
-    if output_format == "markdown":
+    if fmt == "markdown":
         typer.echo(report.to_markdown())
     else:
         if not report.changes:
             console.print("[green]No changes detected.[/green]")
         for c in report.changes:
-            color = {"breaking": "red", "additive": "green", "informational": "blue"}[c.change_class]
+            color = {"breaking": "red", "additive": "green", "informational": "blue"}[
+                c.change_class
+            ]
             console.print(f"[{color}]{c.change_class.upper():14}[/{color}] {c.entity}: {c.detail}")
 
     if report.breaking():
@@ -261,7 +289,7 @@ def snapshot_save(
     """Freeze the current IR to a JSON snapshot for future `idl2icd diff` comparisons."""
     cfg, ir, _ = _build_ir_and_diagnostics(config)
     tag = tag or ir.project.version
-    snap_dir = Path(cfg._base_dir) / cfg.output.snapshot_dir
+    snap_dir = cfg.base_dir / cfg.output.snapshot_dir
     path = snap_dir / f"{tag}.json"
     save_snapshot(ir, path)
     console.print(f"[green]Snapshot saved to {path}[/green]")
@@ -270,9 +298,15 @@ def snapshot_save(
 @metadata_app.command("generate")
 def metadata_generate(
     config: str = typer.Option("idl2icd.yaml", "--config", "-c"),
-    output_dir: str = typer.Option("metadata", "--output-dir", "-o", help="Directory to write generated YAML files to"),
-    all_structs: bool = typer.Option(False, "--all-structs", "-a", help="Generate entries for ALL structs, not just @topic ones"),
-    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing metadata YAML files"),
+    output_dir: str = typer.Option(
+        "metadata", "--output-dir", "-o", help="Directory to write generated YAML files to"
+    ),
+    all_structs: bool = typer.Option(
+        False, "--all-structs", "-a", help="Generate entries for ALL structs, not just @topic ones"
+    ),
+    overwrite: bool = typer.Option(
+        False, "--overwrite", help="Overwrite existing metadata YAML files"
+    ),
 ):
     """Generate skeleton metadata YAML files from IDL source files.
 
@@ -293,7 +327,7 @@ def metadata_generate(
         console.print(f"[red]No IDL files matched sources.idl patterns: {cfg.sources.idl}[/red]")
         raise typer.Exit(code=1)
 
-    base_dir = Path(cfg._base_dir)
+    base_dir = cfg.base_dir
     out_dir = base_dir / output_dir
     generated = 0
     skipped = 0
@@ -302,7 +336,11 @@ def metadata_generate(
     for idl_path in idl_paths:
         try:
             result = generate_metadata_for_idl(
-                idl_path, out_dir, include_dirs=include_dirs, all_structs=all_structs, overwrite=overwrite,
+                idl_path,
+                out_dir,
+                include_dirs=include_dirs,
+                all_structs=all_structs,
+                overwrite=overwrite,
             )
             if result is not None:
                 console.print(f"  [green]✔[/green] {result}")
@@ -323,7 +361,10 @@ def metadata_generate(
             f"(use --overwrite to regenerate)[/yellow]"
         )
     if skipped:
-        console.print(f"[yellow]Skipped {skipped} IDL file(s) with no {'@topic' if not all_structs else 'struct'} definitions[/yellow]")
+        console.print(
+            f"[yellow]Skipped {skipped} IDL file(s) with no "
+            f"{'@topic' if not all_structs else 'struct'} definitions[/yellow]"
+        )
     if not generated and not skipped and not up_to_date:
         console.print("[yellow]No IDL files found to process.[/yellow]")
 
@@ -332,15 +373,18 @@ def metadata_generate(
 def doctor():
     """Environment sanity check."""
     import lark, pydantic, jinja2, typer as _t  # noqa
+
     console.print("[green]lark, pydantic, jinja2, typer all importable. Environment OK.[/green]")
     try:
         import weasyprint  # noqa
+
         console.print("[green]weasyprint available: PDF export enabled.[/green]")
     except (ImportError, OSError) as exc:
         console.print(f"[yellow]{escape(_pdf_unavailable_message(exc))}[/yellow]")
 
     try:
         import docx  # noqa
+
         console.print("[green]python-docx available: Word export enabled.[/green]")
     except ImportError:
         msg = "python-docx not installed: Word export disabled (pip install 'idl2icd[docx]')."

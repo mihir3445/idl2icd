@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from idl2icd.model.ir import IRModel
+from idl2icd.render.helpers import fqn_to_filename
 
 
 def _safe_id(name: str) -> str:
@@ -57,7 +58,7 @@ def generate_pubsub_graph(
         if segments:
             label += "<br>[" + " | ".join(segments) + "]"
 
-        topic_path = f"{topic_base_path}{topic.fqn.replace('::', '.')}.html"
+        topic_path = f"{topic_base_path}{fqn_to_filename(topic.fqn)}"
         lines.append(f'    {tid}("{label}")')
         lines.append(f'    click {tid} "{topic_path}"')
         lines.append(f"    class {tid} topic")

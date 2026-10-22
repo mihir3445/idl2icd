@@ -1,4 +1,3 @@
-
 from idl2icd.model.ir import ProjectMeta
 from idl2icd.model.merge import build_ir
 from idl2icd.snapshot import diff_ir, load_snapshot, save_snapshot
@@ -142,3 +141,42 @@ def test_diff_detects_type_kind_change(tmp_path):
 
     report = diff_ir(old, new)
     assert any(c.kind == "type-kind-changed" for c in report.breaking())
+
+
+def test_snapshot_roundtrip_semantic_identity(tmp_path):
+    ir = _build(tmp_path, BASE_IDL, BASE_META)
+    path = tmp_path / "snap.json"
+    save_snapshot(ir, path)
+    loaded = load_snapshot(path)
+    assert loaded.model_dump() == ir.model_dump()
+
+
+def test_diff_report_markdown_empty_case(tmp_path):
+    old = _build(tmp_path, BASE_IDL, BASE_META, version="1.0.0")
+    new = _build(tmp_path, BASE_IDL, BASE_META, version="1.0.1")
+
+    md = diff_ir(old, new).to_markdown()
+    assert "## 1.0.0 → 1.0.1" in md
+    assert "_No changes detected._" in md
+    assert "⚠ Breaking" not in md
+
+
+def test_diff_report_markdown_breaking_case(tmp_path):
+    old = _build(tmp_path, BASE_IDL, BASE_META, version="1.0.0")
+    new_meta = """
+    topics:
+      Foo:
+        criticality: medium
+        qos:
+          overrides: { reliability: RELIABLE, durability: VOLATILE }
+        publishers:
+          - participant: A
+        subscribers:
+          - participant: B
+    """
+    new = _build(tmp_path, BASE_IDL, new_meta, version="1.0.1")
+
+    md = diff_ir(old, new).to_markdown()
+    assert "### ⚠ Breaking changes" in md
+    assert "qos-durability-weakened" not in md  # detail text is human-friendly
+    assert "durability weakened" in md

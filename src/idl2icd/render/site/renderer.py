@@ -10,9 +10,7 @@ from idl2icd.diagrams.pubsub_graph import (
     generate_type_diagram_for_struct,
 )
 from idl2icd.model.ir import AnyType, Diagnostic, IRModel
-from idl2icd.render.helpers import struct_fields_context
-
-THEME_DIR = Path(__file__).parent.parent.parent.parent.parent / "themes" / "default"
+from idl2icd.render.helpers import THEME_DIR, fqn_to_filename, struct_fields_context
 
 
 def _prepare_type_context(type_: AnyType, ir: IRModel) -> dict:
@@ -57,10 +55,15 @@ def render_site(
     )
 
     index_tpl = env.get_template("index.html.j2")
-    (out_dir / "index.html").write_text(index_tpl.render(
-        project=ir.project, all_topics=all_topics, pubsub_graph=pubsub_graph,
-        diagnostics=diagnostics, asset_prefix="",
-    ))
+    (out_dir / "index.html").write_text(
+        index_tpl.render(
+            project=ir.project,
+            all_topics=all_topics,
+            pubsub_graph=pubsub_graph,
+            diagnostics=diagnostics,
+            asset_prefix="",
+        )
+    )
 
     topics_dir = out_dir / "topics"
     topics_dir.mkdir(exist_ok=True)
@@ -74,12 +77,16 @@ def render_site(
         is_struct = data_type is not None and data_type.kind == "struct"
         type_diagram = generate_type_diagram_for_struct(data_type) if is_struct else "classDiagram"
         html = topic_tpl.render(
-            project=ir.project, topic=topic,
-            data_type={"fqn": data_type.fqn, "fields": struct_fields_context(data_type, ir)} if is_struct
+            project=ir.project,
+            topic=topic,
+            data_type={"fqn": data_type.fqn, "fields": struct_fields_context(data_type, ir)}
+            if is_struct
             else {"fqn": "?", "fields": []},
-            type_diagram=type_diagram, all_topics=all_topics, asset_prefix="../",
+            type_diagram=type_diagram,
+            all_topics=all_topics,
+            asset_prefix="../",
         )
-        fname = topic.fqn.replace("::", ".") + ".html"
+        fname = fqn_to_filename(topic.fqn)
         (topics_dir / fname).write_text(html)
 
     for type_ in ir.types.values():
@@ -89,5 +96,5 @@ def render_site(
             all_topics=all_topics,
             asset_prefix="../",
         )
-        fname = type_.fqn.replace("::", ".") + ".html"
+        fname = fqn_to_filename(type_.fqn)
         (types_dir / fname).write_text(type_html)
